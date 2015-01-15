@@ -65,6 +65,7 @@ class Application(tornado.web.Application):
         handlers = [
             (r"/apps/(.*)/$", IndexHandler),
             (r"/apps/(.*)", tornado.web.StaticFileHandler, {"path": os.path.join(cwd, "apps")}),
+            (r"/client/(.*)", tornado.web.StaticFileHandler, {"path": os.path.join(cwd, "client")}),
 
             # Domains
             (_DOMAIN_PATH + _LIST, DomainInfo, dict(redhawk=redhawk)),
