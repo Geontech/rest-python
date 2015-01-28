@@ -24,7 +24,8 @@ from rest.domain import DomainInfo, DomainProperties
 from rest.waveform import Waveforms
 from rest.component import Component, ComponentProperties
 from rest.devicemanager import DeviceManagers
-from rest.device import Devices, DeviceProperties, FEIHandler
+from rest.device import Devices, DeviceProperties
+from rest.fei import FEIHandler, FEITunerHandler, FEIRFInfoHandler, FEIRFSourceHandler, FEIGPSHandler, FEINavDataHandler
 from rest.port import PortHandler
 from rest.bulkio_handler import BulkIOWebsocketHandler
 
@@ -51,6 +52,11 @@ _DEVICE_PATH = _DEVICE_MGR_PATH + _ID + r'/devices'
 _PROPERTIES_PATH = r'/properties'
 _PORT_PATH = r'/ports'
 _FEI_PATH = r'/frontends'
+_FEI_TUNER_ID = r'/([^/]+Tuner[^/]+)'
+_FEI_RFINFO_ID = r'/(RFInfo[^/]+)'
+_FEI_RFSOURCE_ID = r'/(RFSource[^/]+)'
+_FEI_GPS_ID = r'/(GPS[^/]+)'
+_FEI_NAVDATA_ID = r'/(NavData[^/]+)'
 _BULKIO_PATH = _PORT_PATH + _ID + r'/bulkio'
 
 
@@ -101,11 +107,20 @@ class Application(tornado.web.Application):
             (_DEVICE_PATH + _ID + _PROPERTIES_PATH + _ID, DeviceProperties, dict(redhawk=redhawk)),
             (_DEVICE_PATH + _ID + _PORT_PATH + _LIST, PortHandler, dict(kind='device')),
             (_DEVICE_PATH + _ID + _PORT_PATH + _ID, PortHandler, dict(kind='device')),
-            (_DEVICE_PATH + _ID + _FEI_PATH + _LIST, FEIHandler, dict(redhawk=redhawk)),
-            (_DEVICE_PATH + _ID + _FEI_PATH + _ID, FEIHandler, dict(redhawk=redhawk)),              # e.g., /DigitalTuner_in or /GPS_provides
-            (_DEVICE_PATH + _ID + _FEI_PATH + _ID + _ID, FEIHandler, dict(redhawk=redhawk)),        # e.g., /GPS_provides/gps_time_pos
-            (_DEVICE_PATH + _ID + _FEI_PATH + _ID + _ID + _ID, FEIHandler, dict(redhawk=redhawk)),  # e.g., /DigitalTuner_in/tuner_type/allocation_id
             (_DEVICE_PATH + _ID + _BULKIO_PATH, BulkIOWebsocketHandler, dict(kind='device', _ioloop=_ioloop)),
+            # FEIs
+            (_DEVICE_PATH + _ID + _FEI_PATH + _LIST, FEIHandler, dict(redhawk=redhawk)),
+            (_DEVICE_PATH + _ID + _FEI_PATH + _FEI_TUNER_ID + _LIST, FEITunerHandler, dict(redhawk=redhawk)),
+            (_DEVICE_PATH + _ID + _FEI_PATH + _FEI_TUNER_ID + _ID + _LIST, FEITunerHandler, dict(redhawk=redhawk)),
+            (_DEVICE_PATH + _ID + _FEI_PATH + _FEI_TUNER_ID + _ID + _ID, FEITunerHandler, dict(redhawk=redhawk)),
+            (_DEVICE_PATH + _ID + _FEI_PATH + _FEI_RFINFO_ID + _LIST, FEIRFInfoHandler, dict(redhawk=redhawk)),
+            (_DEVICE_PATH + _ID + _FEI_PATH + _FEI_RFINFO_ID + _ID, FEIRFInfoHandler, dict(redhawk=redhawk)),
+            (_DEVICE_PATH + _ID + _FEI_PATH + _FEI_RFSOURCE_ID + _LIST, FEIRFSourceHandler, dict(redhawk=redhawk)),
+            (_DEVICE_PATH + _ID + _FEI_PATH + _FEI_RFSOURCE_ID + _ID, FEIRFSourceHandler, dict(redhawk=redhawk)),
+            (_DEVICE_PATH + _ID + _FEI_PATH + _FEI_GPS_ID + _LIST, FEIGPSHandler, dict(redhawk=redhawk)),
+            (_DEVICE_PATH + _ID + _FEI_PATH + _FEI_GPS_ID + _ID, FEIGPSHandler, dict(redhawk=redhawk)),
+            (_DEVICE_PATH + _ID + _FEI_PATH + _FEI_NAVDATA_ID + _LIST, FEINavDataHandler, dict(redhawk=redhawk)),
+            (_DEVICE_PATH + _ID + _FEI_PATH + _FEI_NAVDATA_ID + _ID, FEINavDataHandler, dict(redhawk=redhawk)),            
         ]
         tornado.web.Application.__init__(self, handlers, *args, **kwargs)
 
