@@ -179,10 +179,8 @@ class FEIOnlyAttributeBaseHandler(JsonHandler, FEIHelper):
                     info[attribute_name] = self.fixobj(options[attribute_name])
                 else:
                     info = self.format_port(port)
-                    attributes = {}
                     for k,v in options.items():
-                        attributes[k] = self.fixobj(v)
-                    info['attributes'] = attributes
+                        info[k] = self.fixobj(v)
             else:
                 info = self.format_port(port)
 
