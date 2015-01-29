@@ -23,13 +23,12 @@ Rest handlers for Devices
 Classes:
 Device -- Get info of a specific device
 """
+
 from tornado import gen
 
 from handler import JsonHandler
 from helper import PropertyHelper, PortHelper
-from fei import FEIHelper
 from tornado import web
-
 
 
 class Devices(JsonHandler, PropertyHelper, PortHelper):
@@ -43,7 +42,6 @@ class Devices(JsonHandler, PropertyHelper, PortHelper):
                 'id': dev._id,
                 'started': dev._get_started(),
                 'ports': self.format_ports(dev.ports),
-                'frontends': FEIHelper.format_ports(dev),
                 'properties': self.format_properties(dev._properties)
             }
         else:
@@ -58,4 +56,3 @@ class DeviceProperties(web.RequestHandler):
     def get(self, *args):
         self.set_status(500)
         self.write(dict(status='Device Properties handler not implemented'))
-
