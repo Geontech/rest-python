@@ -19,32 +19,37 @@
  */
 angular.module('RedhawkREST', ['ngResource', 'RedhawkConfig'])
   .service('RedhawkREST', ['$resource', 'RedhawkConfig', function($resource, RedhawkConfig) {
-    this.domain = $resource(RedhawkConfig.restUrl + '/domains', {}, {
-      query: {method: 'GET'},
-      add: {method: 'POST'},
-      info: {method: 'GET', url: RedhawkConfig.restUrl + '/domains/:domainId'},
-      configure: {method: 'PUT', url: RedhawkConfig.restUrl + '/domains/:domainId/configure'},
-      events: {method: 'GET', url: RedhawkConfig.restUrl + '/domains/:domainId/eventChannels', isArray:true}
+    this.domain = $resource(RedhawkConfig.domainsUrl, {}, {
+      query:        {method: 'GET'},
+      add:          {method: 'POST'},
+      info:         {method: 'GET', url: RedhawkConfig.domainUrl},
+      configure:    {method: 'PUT', url: RedhawkConfig.domainUrl + '/configure'},
+      events:       {method: 'GET', url: RedhawkConfig.domainUrl + '/eventChannels', isArray:true}
     });
-    this.fileSystem = $resource(RedhawkConfig.restUrl + '/domains/:domainId/fs/:path', {}, {
-      query: {method: 'GET'}
+    this.fileSystem = $resource(RedhawkConfig.domainUrl + '/fs/:path', {}, {
+      query:        {method: 'GET'}
     });
-    this.deviceManager = $resource(RedhawkConfig.restUrl + '/domains/:domainId/deviceManagers/:id', {}, {
-      query: {method: 'GET'}
+    this.deviceManager = $resource(RedhawkConfig.deviceManagerUrl, {}, {
+      query:        {method: 'GET'}
     });
-    this.device = $resource(RedhawkConfig.restUrl + '/domains/:domainId/deviceManagers/:managerId/devices/:deviceId', {}, {
-      query: {method: 'GET'}
+    this.device = $resource(RedhawkConfig.deviceUrl, {}, {
+      query:        {method: 'GET'},
+      allocate:     {method: 'PUT', url: RedhawkConfig.deviceUrl + '/allocate/properties'},
+      configure:    {method: 'PUT', url: RedhawkConfig.deviceUrl + '/configure/properties'},
+      feiQuery:     {method: 'GET', url: RedhawkConfig.devicePortUrl},
+      feiAllocate:  {method: 'PUT', url: RedhawkConfig.devicePortUrl + '/properties'},
+      feiTune:      {method: 'PUT', url: RedhawkConfig.devicePortUrl + '/:allocationId/properties'}
     });
-    this.waveform = $resource(RedhawkConfig.restUrl + '/domains/:domainId/waveforms', {}, {
-      query:     {method: 'GET',    url: RedhawkConfig.restUrl + '/domains/:domainId/waveforms/:id'},
-      status:    {method: 'GET',    url: RedhawkConfig.restUrl + '/domains/:domainId/waveforms'},
-      launch:    {method: 'POST',   url: RedhawkConfig.restUrl + '/domains/:domainId/waveforms'},
-      release:   {method: 'DELETE', url: RedhawkConfig.restUrl + '/domains/:domainId/waveforms/:id'},
-      update:    {method: 'POST',    url: RedhawkConfig.restUrl + '/domains/:domainId/waveforms/:id'},
-      configure: {method: 'PUT',    url: RedhawkConfig.restUrl + '/domains/:domainId/waveforms/:id/properties'}
+    this.waveform = $resource(RedhawkConfig.waveformsUrl, {}, {
+      query:        {method: 'GET',    url: RedhawkConfig.waveformUrl},
+      status:       {method: 'GET',    url: RedhawkConfig.waveformsUrl},
+      launch:       {method: 'POST',   url: RedhawkConfig.waveformsUrl},
+      release:      {method: 'DELETE', url: RedhawkConfig.waveformUrl},
+      update:       {method: 'POST',   url: RedhawkConfig.waveformUrl},
+      configure:    {method: 'PUT',    url: RedhawkConfig.waveformUrl + '/properties'}
     });
-    this.component = $resource(RedhawkConfig.restUrl + '/domains/:domainId/waveforms/:waveformId/components/:componentId', {}, {
-      query: {method: 'GET'},
-      configure: {method: 'PUT', url: RedhawkConfig.restUrl + '/domains/:domainId/waveforms/:waveformId/components/:componentId/properties'}
+    this.component = $resource(RedhawkConfig.componentUrl, {}, {
+      query:        {method: 'GET'},
+      configure:    {method: 'PUT', url: RedhawkConfig.componentUrl + '/properties'}
     });
   }]);
