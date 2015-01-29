@@ -2,17 +2,17 @@
 # Company: Geon Technologies
 # Subject: FEI interface handlers.
 
-from redhawk.frontendInterfaces.FRONTEND import FrontendException, NotSupportedException
+from redhawk.frontendInterfaces.FRONTEND import FrontendException, NotSupportedException, BadParameterException
 
 from tornado import gen, web
 
 from handler import JsonHandler
-from helper import PropertyHelper
+from helper import PropertyHelper, PortHelper
 
 """
 FEI 2.0 Port helper
 """
-class FEIHelper(object):
+class FEIHelper(PortHelper):
     @staticmethod
     def find_port(name, dev):
         port = [p for p in dev.ports if p.name == name]
@@ -20,13 +20,6 @@ class FEIHelper(object):
             return port[0]
         else:
             raise FEIPortNotFoundException(name)
-
-    @staticmethod
-    def format_port (port):
-        return {
-            'name': port.name,
-            'type': port._interface.name
-        }
 
     @staticmethod
     def fixobj (obj):
@@ -63,30 +56,33 @@ class FEITunerHandler(JsonHandler, FEIHelper):
         try:   
             dev = yield self.redhawk.get_device(domain_name, dev_mgr_id, dev_id)
             port = self.find_port(int_name, dev)
-            info = {}
+            info = self.format_port(port)
+
+            CSV_KEY = 'FRONTEND::tuner_status::allocation_id_csv'
+            tuner_statuses = dev.frontend_tuner_status
+            allocations = [s[CSV_KEY].replace(" ", "").split(",") for s in tuner_statuses]
+            allocations = set([a for sublist in allocations for a in sublist if a != ""])
+            info['active_allocation_ids'] = list(allocations)
 
             if port._direction == 'Provides':
                 if allocation_id:
-                    info['id'] = allocation_id
-                    allocation_id = str(allocation_id)
-                    info.update(self.call_with_id(port, allocation_id, attribute_name))
+                    info[allocation_id] = self.call_with_id(port, allocation_id, attribute_name) or {}
                 else:
-                    # Return tuner statuses and an easy-to-use list of all allocation ids found.
-                    info = self.format_port(port)
-                    CSV_KEY = 'FRONTEND::tuner_status::allocation_id_csv'
-                    tuner_statuses = list(dev.frontend_tuner_status)
-                    info['frontend_tuner_status'] = self.fixobj(tuner_statuses)
-
-                    allocations = [s[CSV_KEY].replace(" ", "").split(",") for s in tuner_statuses]
-                    allocations = list(set([a for sublist in allocations for a in sublist if a != ""]))
-                    info['allocations'] = list(set(allocations)) or []
-            else:
-                info = self.format_port(port)
+                    for alloc_id in allocations:
+                        info[alloc_id] = {}
 
             self._render_json(info)
 
         except (FEIInterfaceTypeException, Exception) as e:
             self._handle_request_exception(e)
+
+
+    @gen.coroutine
+    def put(self, domain_name, dev_mgr_id, dev_id, int_name):
+        data = json.loads(self.request.body)
+        dev = yield self.redhawk.get_device(domain_name, dev_mgr_id, dev_id)
+        port = self.find_port(int_name, dev)
+        # TODO: Process the request.
 
     @staticmethod
     def call_with_id(port, allocation_id, attribute_name=''):
@@ -99,13 +95,16 @@ class FEITunerHandler(JsonHandler, FEIHelper):
             cb = FEITunerHandler.digital_callbacks(port)
         else:
             raise FEIInterfaceTypeException(port._interface.name)
+
         if attribute_name in cb:
             try:
                 val = FEITunerHandler.fixobj(cb[attribute_name](allocation_id))
             except NotSupportedException:
                 val = 'NOT_SUPPORTED'
-            finally:
-                return {attribute_name: val}
+            except:
+                raise
+
+            return {attribute_name: val}
         else:
             vals = {}
             for attribute_name in cb.keys():
@@ -166,7 +165,7 @@ class FEIOnlyAttributeBaseHandler(JsonHandler, FEIHelper):
         try:       
             dev = yield self.redhawk.get_device(domain_name, dev_mgr_id, dev_id)
             port = self.find_port(int_name, dev)
-            info = {}
+            info = self.format_port(port)
 
             # Verify interface type
             if port._interface.name not in self._interfacenames:
@@ -175,14 +174,10 @@ class FEIOnlyAttributeBaseHandler(JsonHandler, FEIHelper):
             if port._direction == 'Provides':
                 options = self._options(port)
                 if attribute_name in options:
-                    info['id'] = attribute_name
                     info[attribute_name] = self.fixobj(options[attribute_name])
                 else:
-                    info = self.format_port(port)
                     for k,v in options.items():
                         info[k] = self.fixobj(v)
-            else:
-                info = self.format_port(port)
 
             self._render_json(info)
 
