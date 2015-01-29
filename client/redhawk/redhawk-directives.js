@@ -229,7 +229,7 @@ angular.module('redhawkDirectives', ['RecursionHelper', 'webSCAServices', 'ui.bo
           };
 
           scope.fileUrl = function(path) {
-            return RedhawkConfig.restUrl + '/domains/' + scope.domainId + '/fs' + path;
+            return RedhawkConfig.domainsUrl + scope.domainId + '/fs' + path;
           };
 
           scope.launchWaveform = function(fileName) {
