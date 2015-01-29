@@ -119,7 +119,7 @@ angular.module('redhawkServices', ['webSCAConfig', 'SubscriptionSocketService', 
 
     var portDataTypeRegex = /^data(.*)$/;
     /**
-     * Adds FrontEnd JS specifiv data to the port data returned by the server.
+     * Adds FrontEnd JS specific data to the port data returned by the server.
      *
      * @param ports
      */
@@ -159,6 +159,8 @@ angular.module('redhawkServices', ['webSCAConfig', 'SubscriptionSocketService', 
         if(updateData) {
           angular.extend(self, updateData);
 
+          // TODO: Why does the author think updateData will contain 'ports' on a Domain instance?
+          // The JSON has no 'ports' attribute.
           processPorts(self.ports);
         }
       };
@@ -222,12 +224,15 @@ angular.module('redhawkServices', ['webSCAConfig', 'SubscriptionSocketService', 
        * @returns {*}
        */
       self.getDevice = function(id, deviceManagerId){
-        var devId = uniqueId(id, deviceManagerId);
-        if(!self.devices[devId]){
-          self.devices[devId] = new Device(id, self._restId, deviceManagerId);
+        // FIXME: ?? The returned id is the instantiation ID from the node which is always 
+        // unique in a domain.
+        // Not sure why the author did this uniqueId() call...
+        // var devId = uniqueId(id, deviceManagerId);
+        if(!self.devices[id]){
+          self.devices[id] = new Device(id, self._restId, deviceManagerId);
         }
 
-        return self.devices[devId];
+        return self.devices[id];
       };
 
       /**
@@ -379,7 +384,7 @@ angular.module('redhawkServices', ['webSCAConfig', 'SubscriptionSocketService', 
        * @see {Domain._load()}
        */
       self._load = function(id, domainId) {
-        self.$promise = RedhawkREST.waveform.query({id: id, domainId: domainId}, function(data){
+        self.$promise = RedhawkREST.waveform.query({waveformId: id, domainId: domainId}, function(data){
           self._update(data);
           self.domainId = domainId;
         }).$promise;
@@ -412,7 +417,7 @@ angular.module('redhawkServices', ['webSCAConfig', 'SubscriptionSocketService', 
        */
       self.start = function() {
         return RedhawkREST.waveform.update(
-          {id: self.id, domainId: domainId}, {started: true},
+          {waveformId: self.id, domainId: domainId}, {started: true},
           function(){
             notify.success("Waveform "+self.name+" started.");
             self._reload();
@@ -426,7 +431,7 @@ angular.module('redhawkServices', ['webSCAConfig', 'SubscriptionSocketService', 
        */
       self.stop = function() {
         return RedhawkREST.waveform.update(
-          {id: self.id, domainId: domainId},{started: false},
+          {waveformId: self.id, domainId: domainId},{started: false},
           function(){
             notify.success("Waveform "+self.name+" stopped.");
             self._reload();
@@ -440,7 +445,7 @@ angular.module('redhawkServices', ['webSCAConfig', 'SubscriptionSocketService', 
        */
       self.release = function() {
         return RedhawkREST.waveform.release(
-          {id: self.id, domainId: self.domainId},{},
+          {waveformId: self.id, domainId: self.domainId},{},
           function(){
             notify.success("Waveform "+self.name+" released.");
             redhawk.getDomain(self.domainId)._reload();
@@ -452,7 +457,7 @@ angular.module('redhawkServices', ['webSCAConfig', 'SubscriptionSocketService', 
        * @see {Domain.configure()}
        */
       self.configure = function(properties) {
-        return RedhawkREST.waveform.configure({id: self.id, domainId: self.domainId}, {properties: properties});
+        return RedhawkREST.waveform.configure({waveformId: self.id, domainId: self.domainId}, {properties: properties});
       };
 
       self._load(id, domainId);
@@ -526,8 +531,6 @@ angular.module('redhawkServices', ['webSCAConfig', 'SubscriptionSocketService', 
       self._update = function(updateData) {
         if(updateData) {
           angular.extend(this, updateData);
-
-          //self.uniqueId = uniqueId(self.identifier, self.deviceManager.id);
         }
       };
       /**
@@ -550,6 +553,65 @@ angular.module('redhawkServices', ['webSCAConfig', 'SubscriptionSocketService', 
             {deviceId: self.id, managerId: self.deviceManager.id, domainId: self.domainId},
             {properties: properties},
             function(){ self._reload(); }
+        );
+      };
+
+      self.allocate = function(properties) {
+        return RedhawkREST.device.allocate(
+            {deviceId: self.id, managerId: self.deviceManager.id, domainId: self.domainId},
+            {properties: properties},
+            function(){ self._reload(); }
+        );
+      };
+
+      // Returns items in oldList not found in newList
+      var filterOldList = function(oldList, newList) {
+        var out = [];
+        for (var oldI = 0; oldI < oldList.length; oldI++) {
+          var unique = true;
+          for (var newI = 0; newI < newList.length; newI++) {
+            if (oldList[oldI] == newList[newI]) {
+              unique = false;
+              break;
+            }
+          }
+          if (unique) 
+            out.push(oldList[oldI]);
+        }
+        return out;
+      };
+
+      self.feiQuery = function(portId) {
+        self.$promise = RedhawkREST.device.feiQuery(
+            {portId: portId, deviceId: self.id, managerId: self.deviceManager.id, domainId: self.domainId},
+            function(data) {
+              // Data is the FEITuner structure w/ an updated allocation ID list and no id-keys filled.
+              // Find the port and remove any invalid allocation ids, then extend to update valid ones.
+              angular.forEach(self.ports, function(port) {
+                if (port.name == data.name) {
+                  var oldIDs = filterOldList(port.active_allocation_ids, data.active_allocation_ids);
+                  for (var i=0; i < oldIDs.length; i++) {
+                    delete port[oldIDs[i]];
+                  }
+                  angular.extend(port, data);
+                }
+              });
+            }).$promise;
+      };
+
+      self.feiAllocate = function(portId, properties) {
+        return RedhawkRest.device.feiAllocate(
+            {portId:portId, deviceId: self.id, managerId: self.deviceManager.id, domainId: self.domainId},
+            {properties: properties},
+            function () { self.feiQuery(portId); }
+        );
+      };
+
+      self.feiTune = function(portId, allocationId, properties) {
+        return RedhawkRest.device.feiTune(
+            {allocationId: allocationId, portId: portId, deviceId: self.id, managerId: self.deviceManager.id, domainId: self.domainId},
+            {properties: properties},
+            function () { self.feiQuery(portId); }
         );
       };
 
@@ -579,7 +641,7 @@ angular.module('redhawkServices', ['webSCAConfig', 'SubscriptionSocketService', 
        * @see {Domain._load()}
        */
       self._load = function(id, domainId) {
-        self.$promise = RedhawkREST.deviceManager.query({id: id, domainId: domainId}, function(data){
+        self.$promise = RedhawkREST.deviceManager.query({managerId: id, domainId: domainId}, function(data){
           self._update(data);
           self.domainId = domainId;
         }).$promise;
@@ -588,14 +650,6 @@ angular.module('redhawkServices', ['webSCAConfig', 'SubscriptionSocketService', 
        * @see {Domain._reload()}
        */
       self._reload = function() { self._load(self.id, self.domainId); };
-
-      self.configure = function(properties) {
-        return RedhawkREST.component.configure(
-            {id: self.id, domainId: self.domainId},
-            {properties: properties},
-            function(){ self._reload(); }
-        );
-      };
 
       self._load(id, domainId);
     };
@@ -691,8 +745,9 @@ angular.module('redhawkServices', ['webSCAConfig', 'SubscriptionSocketService', 
           properties = deviceManager.properties;
         }
       } else if(type=='deviceManagers' && subType=='devices') {
-        var id = uniqueId(subTypeId, typeId);
-        var device = domain.devices[id];
+        // FIXME:?? Again, see note above regarding uniquness of instance ids.
+        // var id = uniqueId(subTypeId, typeId);
+        var device = domain.devices[subTypeId];
         if(device){
           properties = device.properties
         }
