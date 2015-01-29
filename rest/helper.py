@@ -130,4 +130,9 @@ class PortHelper(object):
         if port._direction == 'Uses':
             port_value['type'] = port._using.name
             port_value['namespace'] = port._using.nameSpace
+
+        elif port._direction == 'Provides':
+            port_value['type'] = port._interface.name
+            port_value['namespace'] = port._interface.nameSpace
+            
         return port_value
