@@ -36,6 +36,22 @@ angular.module('RedhawkConfig', [])
     this.websocketUrl = getWSBasePath() + this.wsPath;
     this.restUrl = this.restPath;
 
+    // General locations
+    this.portsUrl = '/ports';
+    this.portUrl = this.portsUrl + '/:portId';
+
+    // Full URL helper paths for redhawk-rest-service, etc.
+    this.domainsUrl = this.restUrl + '/domains';
+    this.domainUrl = this.domainsUrl + '/:domainId';
+    this.deviceManagerUrl = this.domainUrl + '/deviceManagers/:managerId';
+    this.deviceUrl = this.deviceManagerUrl + '/devices/:deviceId';
+    this.devicePortsUrl = this.deviceUrl + this.portsUrl;
+    this.devicePortUrl = this.deviceUrl + this.portUrl;
+    this.waveformsUrl = this.domainsUrl + '/waveforms';
+    this.waveformUrl = this.waveformsUrl + '/:waveformId';
+    this.componentsUrl = this.waveformUrl + '/components';
+    this.componentUrl = this.componentsUrl + '/:componentId';
+
     this.setLocation = function(host, port, basePath) {
       this.restUrl = "http://" + host + (port? ':'+port: '') + (basePath? '/'+basePath: '') + this.restPath;
       this.websocketUrl = 'ws://'+ host + (port? ':'+port: '') + (basePath? '/'+basePath: '') + this.wsPath;
@@ -44,10 +60,18 @@ angular.module('RedhawkConfig', [])
     var provider = this;
     this.$get = function() {
       return {
-        restPath: provider.restPath,
-        websocketPath: provider.wsPath,
-        websocketUrl: provider.websocketUrl,
-        restUrl: provider.restUrl
+        restPath:         provider.restPath,
+        websocketPath:    provider.wsPath,
+        websocketUrl:     provider.websocketUrl,
+        restUrl:          provider.restUrl,
+        domainsUrl:       provider.domainsUrl,
+        domainUrl:        provider.domainUrl,
+        deviceManagerUrl: provider.deviceManagerUrl,
+        deviceUrl:        provider.deviceUrl,
+        devicePortUrl:    provider.devicePortUrl,
+        waveformsUrl:     provider.waveformsUrl,
+        waveformUrl:      provider.waveformUrl,
+        componentUrl:     provider.componentUrl
       };
     };
   }]);
