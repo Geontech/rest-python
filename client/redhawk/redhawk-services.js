@@ -158,9 +158,6 @@ angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifica
       self._update = function(updateData) {
         if(updateData) {
           angular.extend(self, updateData);
-
-          // TODO: Why does the author think updateData will contain 'ports' on a Domain instance?
-          // The JSON has no 'ports' attribute.
           processPorts(self.ports);
         }
       };
