@@ -17,7 +17,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see http://www.gnu.org/licenses/.
  */
-angular.module('redhawkServices', ['webSCAConfig', 'SubscriptionSocketService', 'redhawk-notifications', 'RedhawkConfig', 'RedhawkREST'])
+angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifications', 'RedhawkConfig', 'RedhawkREST'])
   .config(['$httpProvider', function($httpProvider) {
     $httpProvider.defaults.transformResponse.unshift(function(response, headersGetter) {
       var ctype = headersGetter('content-type');
@@ -610,9 +610,9 @@ angular.module('redhawkServices', ['webSCAConfig', 'SubscriptionSocketService', 
         ).$promise;
       };
 
-      self.feiQueryId = function(porId, allocationId) {
+      self.feiQueryId = function(portId, allocationId) {
         self.$promise = RedhawkREST.device.feiQueryId(
-          {allocationId: allocationId, portId: portId, deviceId: self.id, managerId: self.deviceManager.id, domainId: self.domainId}
+          {allocationId: allocationId, portId: portId, deviceId: self.id, managerId: self.deviceManager.id, domainId: self.domainId},
           function(data) { self._updatePortWithData(data); }
         ).$promise;
       };
