@@ -132,7 +132,7 @@ angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifica
             port.plotType = matches[1].toLowerCase();
         } else {
           port.canPlot = false;
-          console.log("DEBUG: " + port + " port has unrecognized repid: " + port.repid);
+          console.log("DEBUG: " + port + " port has unrecognized type: " + port.type);
         }
       });
     };
