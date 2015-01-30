@@ -47,7 +47,7 @@ angular.module('RedhawkConfig', [])
     this.deviceUrl = this.deviceManagerUrl + '/devices/:deviceId';
     this.devicePortsUrl = this.deviceUrl + this.portsUrl;
     this.devicePortUrl = this.deviceUrl + this.portUrl;
-    this.waveformsUrl = this.domainsUrl + '/waveforms';
+    this.waveformsUrl = this.domainUrl + '/waveforms';
     this.waveformUrl = this.waveformsUrl + '/:waveformId';
     this.componentsUrl = this.waveformUrl + '/components';
     this.componentUrl = this.componentsUrl + '/:componentId';
