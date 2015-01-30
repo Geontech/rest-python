@@ -137,6 +137,45 @@ class Redhawk(object):
         dom = self._get_domain(domain_name)
         return dom.find_device(device_manager_id, device_id)
 
+    @background_task
+    def device_configure(self, domain_name, device_manager_id, device_id, new_properties):
+        dom = self._get_domain(domain_name)
+        dev = dom.find_device(device_manager_id, device_id)
+
+        configure_changes = {}
+        for prop in comp._properties:
+            if prop.id in new_properties:
+                if new_properties[prop.id] != prop.queryValue():
+                    configure_changes[prop.id] = (type(prop.queryValue()))(new_properties[prop.id])
+
+        return dev.configure(configure_changes)
+
+    @background_task
+    def device_allocate(self, domain_name, device_manager_id, device_id, properties):
+        dom = self._get_domain(domain_name)
+        dev = dom.find_device(device_manager_id, device_id)
+
+        allocations = {}
+        for prop in comp._properties:
+            if prop.id in properties:
+                if properties[prop.id] != prop.queryValue():
+                    allocations[prop.id] = (type(prop.queryValue()))(properties[prop.id])
+
+        return dev.allocateCapacity(allocations)
+
+    @background_task
+    def device_deallocate(self, domain_name, device_manager_id, device_id, properties):
+        dom = self._get_domain(domain_name)
+        dev = dom.find_device(device_manager_id, device_id)
+
+        deallocations = {}
+        for prop in comp._properties:
+            if prop.id in properties:
+                if properties[prop.id] != prop.queryValue():
+                    deallocations[prop.id] = (type(prop.queryValue()))(properties[prop.id])
+
+        return dev.deallocateCapacity(deallocations)
+
     ##############################
     # SERVICE
 

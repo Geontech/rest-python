@@ -47,6 +47,10 @@ class FEIPortNotFoundException(FEIInterfaceTypeException):
     def __str__(self):
         return "Port was not found on the device: {0}".format(self.name)
 
+class FEIAttributeHasNoCallbackException(FEIInterfaceTypeException):
+    def __str__(self):
+        return "Attribute {0} was not able to be set (no callback).".format(self.name)
+
 """
 FEI *Tuner handler 
 """
@@ -66,7 +70,7 @@ class FEITunerHandler(JsonHandler, FEIHelper):
 
             if port._direction == 'Provides':
                 if allocation_id:
-                    info[allocation_id] = self.call_with_id(port, allocation_id, attribute_name) or {}
+                    info[allocation_id] = self.get_attribute(port, allocation_id, attribute_name) or {}
                 else:
                     for alloc_id in allocations:
                         info[alloc_id] = {}
@@ -78,21 +82,26 @@ class FEITunerHandler(JsonHandler, FEIHelper):
 
 
     @gen.coroutine
-    def put(self, domain_name, dev_mgr_id, dev_id, int_name):
+    def put(self, domain_name, dev_mgr_id, dev_id, int_name, allocation_id):
         data = json.loads(self.request.body)
         dev = yield self.redhawk.get_device(domain_name, dev_mgr_id, dev_id)
         port = self.find_port(int_name, dev)
-        # TODO: Process the request.
+        # FEITunerHandler supports 1 PUT: Tune.
+        try:
+            for prop in data['properties']:
+                self.set_attribute(port, allocation_id, prop['id'], prop['value'])
+        except Exception as e:
+            self._handle_request_exception(e)
 
     @staticmethod
-    def call_with_id(port, allocation_id, attribute_name=''):
+    def get_attribute(port, allocation_id, attribute_name=''):
         cb = {}
         if   port._interface.name == 'FrontendTuner':
-            cb = FEITunerHandler.general_callbacks(port)
+            cb = FEITunerHandler.general_get_callbacks(port)
         elif port._interface.name == 'AnalogTuner':
-            cb = FEITunerHandler.analog_callbacks(port)
+            cb = FEITunerHandler.analog_get_callbacks(port)
         elif port._interface.name == 'DigitalTuner':
-            cb = FEITunerHandler.digital_callbacks(port)
+            cb = FEITunerHandler.digital_get_callbacks(port)
         else:
             raise FEIInterfaceTypeException(port._interface.name)
 
@@ -108,11 +117,32 @@ class FEITunerHandler(JsonHandler, FEIHelper):
         else:
             vals = {}
             for attribute_name in cb.keys():
-                vals.update(FEITunerHandler.call_with_id(port, allocation_id, attribute_name))
+                vals.update(FEITunerHandler.get_attribute(port, allocation_id, attribute_name))
             return vals
 
     @staticmethod
-    def general_callbacks(port):
+    def set_attribute(port, allocation_id, attribute_name, value):
+        cb = {}
+        if   port._interface.name == 'FrontendTuner':
+            cb = FEITunerHandler.general_set_callbacks(port)
+        elif port._interface.name == 'AnalogTuner':
+            cb = FEITunerHandler.analog_set_callbacks(port)
+        elif port._interface.name == 'DigitalTuner':
+            cb = FEITunerHandler.digital_set_callbacks(port)
+        else:
+            raise FEIInterfaceTypeException(port._interface.name)
+
+        if attribute_name in cb:
+            try:
+                cb[attribute_name](allocation_id, value)
+            except Exception as e:
+                self._handle_request_exception(e)
+        else:
+            raise FEIAttributeHasNoCallbackException(attribute_name)
+
+
+    @staticmethod
+    def general_get_callbacks(port):
         return { 
             'tuner_control'         : port.ref.getTunerType, 
             'tuner_device_control'  : port.ref.getTunerDeviceControl,
@@ -122,8 +152,18 @@ class FEITunerHandler(JsonHandler, FEIHelper):
         }
 
     @staticmethod
-    def analog_callbacks(port):
-        d = FEITunerHandler.general_callbacks(port)
+    def general_set_callbacks(port):
+        return { 
+            'tuner_control'         : port.ref.setTunerType, 
+            'tuner_device_control'  : port.ref.setTunerDeviceControl,
+            'tuner_group_id'        : port.ref.setTunerGroupId,
+            'tuner_rf_flow_id'      : port.ref.setTunerRfFlowId,
+            'tuner_status'          : port.ref.setTunerStatus
+        }
+
+    @staticmethod
+    def analog_get_callbacks(port):
+        d = FEITunerHandler.general_get_callbacks(port)
         d.update({
             'tuner_center_frequency'    : port.ref.getTunerCenterFrequency,
             'tuner_bandwidth'           : port.ref.getTunerBandwidth,
@@ -135,10 +175,31 @@ class FEITunerHandler(JsonHandler, FEIHelper):
         return d
 
     @staticmethod
-    def digital_callbacks(port):
-        d = FEITunerHandler.analog_callbacks(port)
+    def analog_set_callbacks(port):
+        d = FEITunerHandler.general_set_callbacks(port)
+        d.update({
+            'tuner_center_frequency'    : port.ref.setTunerCenterFrequency,
+            'tuner_bandwidth'           : port.ref.setTunerBandwidth,
+            'tuner_agc_enable'          : port.ref.setTunerAgcEnable,
+            'tuner_gain'                : port.ref.setTunerGain,
+            'tuner_reference_source'    : port.ref.setTunerReferenceSource,
+            'tuner_enable'              : port.ref.setTunerEnable
+        })
+        return d
+
+    @staticmethod
+    def digital_get_callbacks(port):
+        d = FEITunerHandler.analog_get_callbacks(port)
         d.update({
             'tuner_output_sample_rate' : port.ref.getTunerOutputSampleRate
+        })
+        return d
+
+    @staticmethod
+    def digital_set_callbacks(port):
+        d = FEITunerHandler.analog_set_callbacks(port)
+        d.update({
+            'tuner_output_sample_rate' : port.ref.setTunerOutputSampleRate
         })
         return d
 

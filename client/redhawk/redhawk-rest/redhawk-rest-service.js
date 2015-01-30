@@ -34,11 +34,12 @@ angular.module('RedhawkREST', ['ngResource', 'RedhawkConfig'])
     });
     this.device = $resource(RedhawkConfig.deviceUrl, {}, {
       query:        {method: 'GET'},
-      allocate:     {method: 'PUT', url: RedhawkConfig.deviceUrl + '/allocate/properties'},
-      configure:    {method: 'PUT', url: RedhawkConfig.deviceUrl + '/configure/properties'},
+      allocate:     {method: 'PUT', url: RedhawkConfig.deviceUrl + '/properties'},
+      deallocate:   {method: 'PUT', url: RedhawkConfig.deviceUrl + '/properties'},
+      configure:    {method: 'PUT', url: RedhawkConfig.deviceUrl + '/properties'},
       feiQuery:     {method: 'GET', url: RedhawkConfig.devicePortUrl},
-      feiAllocate:  {method: 'PUT', url: RedhawkConfig.devicePortUrl + '/properties'},
-      feiTune:      {method: 'PUT', url: RedhawkConfig.devicePortUrl + '/:allocationId/properties'}
+      feiQueryId:   {method: 'GET', url: RedhawkConfig.devicePortUrl + '/:allocationId'},
+      feiTune:      {method: 'PUT', url: RedhawkConfig.devicePortUrl + '/:allocationId/:properties'}
     });
     this.waveform = $resource(RedhawkConfig.waveformsUrl, {}, {
       query:        {method: 'GET',    url: RedhawkConfig.waveformUrl},

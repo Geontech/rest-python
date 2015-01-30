@@ -551,7 +551,7 @@ angular.module('redhawkServices', ['webSCAConfig', 'SubscriptionSocketService', 
       self.configure = function(properties) {
         return RedhawkREST.device.configure(
             {deviceId: self.id, managerId: self.deviceManager.id, domainId: self.domainId},
-            {properties: properties},
+            {method: 'configure', properties: properties},
             function(){ self._reload(); }
         );
       };
@@ -559,7 +559,15 @@ angular.module('redhawkServices', ['webSCAConfig', 'SubscriptionSocketService', 
       self.allocate = function(properties) {
         return RedhawkREST.device.allocate(
             {deviceId: self.id, managerId: self.deviceManager.id, domainId: self.domainId},
-            {properties: properties},
+            {method: 'allocate', properties: properties},
+            function(){ self._reload(); }
+        );
+      };
+
+      self.deallocate = function(properties) {
+        return RedhawkREST.device.deallocate(
+            {deviceId: self.id, managerId: self.deviceManager.id, domainId: self.domainId},
+            {method: 'deallocate', properties: properties},
             function(){ self._reload(); }
         );
       };
@@ -581,37 +589,39 @@ angular.module('redhawkServices', ['webSCAConfig', 'SubscriptionSocketService', 
         return out;
       };
 
-      self.feiQuery = function(portId) {
-        self.$promise = RedhawkREST.device.feiQuery(
-            {portId: portId, deviceId: self.id, managerId: self.deviceManager.id, domainId: self.domainId},
-            function(data) {
-              // Data is the FEITuner structure w/ an updated allocation ID list and no id-keys filled.
-              // Find the port and remove any invalid allocation ids, then extend to update valid ones.
-              angular.forEach(self.ports, function(port) {
-                if (port.name == data.name) {
-                  var oldIDs = filterOldList(port.active_allocation_ids, data.active_allocation_ids);
-                  for (var i=0; i < oldIDs.length; i++) {
-                    delete port[oldIDs[i]];
-                  }
-                  angular.extend(port, data);
-                }
-              });
-            }).$promise;
+      self._updatePortWithData = function(portData) {
+        // portData is the FEITuner structure w/ an updated allocation ID list and no id-keys filled.
+        // Find the port and remove any invalid allocation ids, then extend to update valid ones.
+        angular.forEach(self.ports, function(port) {
+          if (port.name == portData.name) {
+            var oldIDs = filterOldList(port.active_allocation_ids, portData.active_allocation_ids);
+            for (var i=0; i < oldIDs.length; i++) {
+              delete port[oldIDs[i]];
+            }
+            angular.extend(port, portData);
+          }
+        });
       };
 
-      self.feiAllocate = function(portId, properties) {
-        return RedhawkRest.device.feiAllocate(
-            {portId:portId, deviceId: self.id, managerId: self.deviceManager.id, domainId: self.domainId},
-            {properties: properties},
-            function () { self.feiQuery(portId); }
-        );
+      self.feiQuery = function(portId) {
+        self.$promise = RedhawkREST.device.feiQuery(
+          {portId: portId, deviceId: self.id, managerId: self.deviceManager.id, domainId: self.domainId},
+          function(data) { self._updatePortWithData(data); }
+        ).$promise;
+      };
+
+      self.feiQueryId = function(porId, allocationId) {
+        self.$promise = RedhawkREST.device.feiQueryId(
+          {allocationId: allocationId, portId: portId, deviceId: self.id, managerId: self.deviceManager.id, domainId: self.domainId}
+          function(data) { self._updatePortWithData(data); }
+        ).$promise;
       };
 
       self.feiTune = function(portId, allocationId, properties) {
         return RedhawkRest.device.feiTune(
             {allocationId: allocationId, portId: portId, deviceId: self.id, managerId: self.deviceManager.id, domainId: self.domainId},
             {properties: properties},
-            function () { self.feiQuery(portId); }
+            function () { self.feiQueryId(portId, allocationId); }
         );
       };
 
