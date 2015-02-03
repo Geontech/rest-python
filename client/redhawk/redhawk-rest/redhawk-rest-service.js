@@ -34,9 +34,7 @@ angular.module('RedhawkREST', ['ngResource', 'RedhawkConfig'])
     });
     this.device = $resource(RedhawkConfig.deviceUrl, {}, {
       query:        {method: 'GET'},
-      configure:    {method: 'PUT', url: RedhawkConfig.deviceUrl + '/properties'},
-      allocate:     {method: 'PUT', url: RedhawkConfig.deviceUrl + '/properties'},
-      deallocate:   {method: 'PUT', url: RedhawkConfig.deviceUrl + '/properties'},
+      save:         {method: 'PUT', url: RedhawkConfig.deviceUrl + '/properties'},
       feiQuery:     {method: 'GET', url: RedhawkConfig.devicePortUrl},
       feiQueryId:   {method: 'GET', url: RedhawkConfig.devicePortUrl + '/:allocationId'},
       feiTune:      {method: 'PUT', url: RedhawkConfig.devicePortUrl + '/:allocationId'}

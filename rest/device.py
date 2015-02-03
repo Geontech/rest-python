@@ -29,13 +29,13 @@ from tornado import gen
 from handler import JsonHandler
 from helper import PropertyHelper, PortHelper
 from tornado import web
+import json
 
-
-class Devices(JsonHandler, PropertyHelper, PortHelper):
+class Device(JsonHandler, PropertyHelper, PortHelper):
     @gen.coroutine
-    def get(self, domain_name, dev_mgr_id, dev_id=None):
-        if dev_id:
-            dev = yield self.redhawk.get_device(domain_name, dev_mgr_id, dev_id)
+    def get(self, domainName, managerId, deviceId=None):
+        if deviceId:
+            dev = yield self.redhawk.get_device(domainName, managerId, deviceId)
 
             info = {
                 'name': dev.name,
@@ -45,7 +45,7 @@ class Devices(JsonHandler, PropertyHelper, PortHelper):
                 'properties': self.format_properties(dev._properties)
             }
         else:
-            devices = yield self.redhawk.get_device_list(domain_name, dev_mgr_id)
+            devices = yield self.redhawk.get_device_list(domainName, managerId)
             info = {'devices': devices}
 
         self._render_json(info)
@@ -53,28 +53,23 @@ class Devices(JsonHandler, PropertyHelper, PortHelper):
 
 class DeviceProperties(JsonHandler, PropertyHelper):
     @gen.coroutine
-    def get(self, domain_name, dev_mgr_id, dev_id):
-        dev = yield self.redhawk.get_device(domain_name, dev_mgr_id, dev_id)
+    def get(self, domainName, managerId, deviceId):
+        dev = yield self.redhawk.get_device(domainName, managerId, deviceId)
 
         self._render_json({
             'properties': self.format_properties(dev._properties)
         })
-
+    
     @gen.coroutine
-    def put(self, domain_name, dev_mgr_id, dev_id):
+    def put(self, domainName, managerId, deviceId):
         PUT_METHODS = {
             'configure'     : self.redhawk.device_configure,
             'allocate'      : self.redhawk.device_allocate,
             'deallocate'    : self.redhawk.device_deallocate
         }
-
         data = json.loads(self.request.body)
         changes = {}
         for p in data['properties']:
             changes[p['id']] = p['value']
-
         cb = PUT_METHODS.get(data['method'], None)
-        if cb:
-            yield cb(domain_name, dev_mgr_id, dev_id, changes)
-        else:
-            self._render_error('Unknown method: {0}'.format(data['method']))
+        yield cb(domainName, managerId, deviceId, changes)

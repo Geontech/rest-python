@@ -137,44 +137,35 @@ class Redhawk(object):
         dom = self._get_domain(domain_name)
         return dom.find_device(device_manager_id, device_id)
 
-    @background_task
-    def device_configure(self, domain_name, device_manager_id, device_id, new_properties):
+    def _get_device(self, domain_name, device_manager_id, device_id):
         dom = self._get_domain(domain_name)
-        dev = dom.find_device(device_manager_id, device_id)
+        return dom.find_device(device_manager_id, device_id)
 
-        configure_changes = {}
-        for prop in comp._properties:
+    def _get_prop_changes(self, current_props, new_properties):
+        changes = {}
+        for prop in current_props:
             if prop.id in new_properties:
                 if new_properties[prop.id] != prop.queryValue():
-                    configure_changes[prop.id] = (type(prop.queryValue()))(new_properties[prop.id])
-
-        return dev.configure(configure_changes)
-
-    @background_task
-    def device_allocate(self, domain_name, device_manager_id, device_id, properties):
-        dom = self._get_domain(domain_name)
-        dev = dom.find_device(device_manager_id, device_id)
-
-        allocations = {}
-        for prop in comp._properties:
-            if prop.id in properties:
-                if properties[prop.id] != prop.queryValue():
-                    allocations[prop.id] = (type(prop.queryValue()))(properties[prop.id])
-
-        return dev.allocateCapacity(allocations)
+                    changes[prop.id] = (type(prop.queryValue()))(new_properties[prop.id])
+        return changes
 
     @background_task
-    def device_deallocate(self, domain_name, device_manager_id, device_id, properties):
-        dom = self._get_domain(domain_name)
-        dev = dom.find_device(device_manager_id, device_id)
+    def device_configure(self, domain_name, device_manager_id, device_id, new_properties):
+        dev = self._get_device(domain_name, device_manager_id, device_id)
+        changes = self._get_prop_changes(dev._properties, new_properties)
+        return dev.configure(changes)
 
-        deallocations = {}
-        for prop in comp._properties:
-            if prop.id in properties:
-                if properties[prop.id] != prop.queryValue():
-                    deallocations[prop.id] = (type(prop.queryValue()))(properties[prop.id])
+    @background_task
+    def device_allocate(self, domain_name, device_manager_id, device_id, new_properties):
+        dev = self._get_device(domain_name, device_manager_id, device_id)
+        changes = self._get_prop_changes(dev._properties, new_properties)
+        return dev.allocateCapacity(changes)
 
-        return dev.deallocateCapacity(deallocations)
+    @background_task
+    def device_deallocate(self, domain_name, device_manager_id, device_id, new_properties):
+        dev = self._get_device(domain_name, device_manager_id, device_id)
+        changes = self._get_prop_changes(dev._properties, new_properties)
+        return dev.deallocateCapacity(changes)
 
     ##############################
     # SERVICE

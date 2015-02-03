@@ -546,7 +546,7 @@ angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifica
       self._reload = function() { self._load(self.id, self.domainId, self.deviceManager.id); };
 
       self.configure = function(properties) {
-        return RedhawkREST.device.configure(
+        return RedhawkREST.device.save(
             {deviceId: self.id, managerId: self.deviceManager.id, domainId: self.domainId},
             {method: 'configure', properties: properties},
             function(){ self._reload(); }
@@ -554,7 +554,7 @@ angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifica
       };
 
       self.allocate = function(properties) {
-        return RedhawkREST.device.allocate(
+        return RedhawkREST.device.save(
             {deviceId: self.id, managerId: self.deviceManager.id, domainId: self.domainId},
             {method: 'allocate', properties: properties},
             function(){ self._reload(); }
@@ -562,7 +562,7 @@ angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifica
       };
 
       self.deallocate = function(properties) {
-        return RedhawkREST.device.deallocate(
+        return RedhawkREST.device.save(
             {deviceId: self.id, managerId: self.deviceManager.id, domainId: self.domainId},
             {method: 'deallocate', properties: properties},
             function(){ self._reload(); }
