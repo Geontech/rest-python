@@ -24,7 +24,7 @@ from rest.domain import DomainInfo, DomainProperties
 from rest.waveform import Waveforms
 from rest.component import Component, ComponentProperties
 from rest.devicemanager import DeviceManagers
-from rest.device import Devices, DeviceProperties
+from rest.device import Device, DeviceProperties
 from rest.fei import FEITunerHandler, FEIRFInfoHandler, FEIRFSourceHandler, FEIGPSHandler, FEINavDataHandler
 from rest.port import PortHandler
 from rest.bulkio_handler import BulkIOWebsocketHandler
@@ -100,8 +100,8 @@ class Application(tornado.web.Application):
             (_DEVICE_MGR_PATH + _ID, DeviceManagers, dict(redhawk=redhawk)),
 
             # Devices
-            (_DEVICE_PATH + _LIST, Devices, dict(redhawk=redhawk)),
-            (_DEVICE_PATH + _ID, Devices, dict(redhawk=redhawk)),
+            (_DEVICE_PATH + _LIST, Device, dict(redhawk=redhawk)),
+            (_DEVICE_PATH + _ID, Device, dict(redhawk=redhawk)),
             (_DEVICE_PATH + _ID + _PROPERTIES_PATH + _LIST, DeviceProperties, dict(redhawk=redhawk)),
             (_DEVICE_PATH + _ID + _PROPERTIES_PATH + _ID, DeviceProperties, dict(redhawk=redhawk)),
             (_DEVICE_PATH + _ID + _PORT_PATH + _LIST, PortHandler, dict(kind='device')),
