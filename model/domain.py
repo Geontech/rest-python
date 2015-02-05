@@ -60,20 +60,42 @@ class WaveformReleaseError(Exception):
 class Domain:
     domMgr_ptr = None
     odmListener = None
-    eventHandlers = []
+    eventHandlers = None
     name = None
+
+    ODM_CHANNEL_NAME = 'ODM_CHANNEL'
 
     def __init__(self, domainname):
         self.name = domainname
+        self.eventHandlers = {ODM_CHANNEL_NAME:[]}
         try:
             self._establish_domain()
         except StandardError, e:
             logging.warn("Unable to find domain %s", e, exc_info=1)
             raise ResourceNotFound("domain", domainname)
 
+    def disconnect(self):
+        self.odmListener.disconnect()
+        # TODO: When eventHandlers maps to other event handler entities, 
+        # be sure to disconnect from them.
+
+    def add_event_listener(self, callbackFn, topic=None):
+        # FIXME: Right now we only support ODM...
+        self.eventHandlers[ODM_CHANNEL_NAME].append(callbackFn)
+
+    def rm_event_listener(self, callbackFn, topic=None):
+        if not topic:
+            for k in self.eventHandlers:
+                self.rm_event_listener(callbackFn, k)
+        else:
+            self.eventHandlers[topic].remove(callbackFn);
+
+    def _pass_event(self, event, topic):
+        handlers = self.eventHandlers.get(topic, [])
+        [ handler(event) for handler in handlers ]
+
     def _odm_response(self, event):
-        for eventH in self.eventHandlers:
-            eventH.event_queue.put(event)
+        self._pass_event(event, ODM_CHANNEL_NAME)
 
     def _connect_odm_listener(self):
         self.odmListener = ODMListener()

@@ -28,6 +28,7 @@ from rest.device import Device, DeviceProperties
 from rest.fei import FEITunerHandler, FEIRFInfoHandler, FEIRFSourceHandler, FEIGPSHandler, FEINavDataHandler
 from rest.port import PortHandler
 from rest.bulkio_handler import BulkIOWebsocketHandler
+from rest.event_handler import EventHandler
 
 import tornado.httpserver
 import tornado.web
@@ -40,11 +41,13 @@ from model.redhawk import Redhawk
 from tornado.options import define, options
 
 define('port', default=8080, type=int, help="server port")
-define("debug", default=False, type=bool, help="Enable Tornado debug mode.  Reloads code")
+define('debug', default=False, type=bool, help="Enable Tornado debug mode.  Reloads code")
 
 _ID = r'/([^/]+)'
 _LIST = r'/?'
-_DOMAIN_PATH = r'/rh/rest/domains'
+
+_BASE_URL = r'/rh/rest'
+_DOMAIN_PATH = _BASE_URL + r'/domains'
 _WAVEFORM_PATH = _DOMAIN_PATH + _ID + r'/waveforms'
 _COMPONENT_PATH = _WAVEFORM_PATH + _ID + r'/components'
 _DEVICE_MGR_PATH = _DOMAIN_PATH + _ID + r'/deviceManagers'
@@ -72,6 +75,10 @@ class Application(tornado.web.Application):
             (r"/apps/(.*)/$", IndexHandler),
             (r"/apps/(.*)", tornado.web.StaticFileHandler, {"path": os.path.join(cwd, "apps")}),
             (r"/client/(.*)", tornado.web.StaticFileHandler, {"path": os.path.join(cwd, "client")}),
+
+            # Top-level Event Handler REDHAWK status channel and messaging system
+            # The event handler sorts out what to do for us.
+            (_BASE_URL + r'/(status|msg)/?', EventHandler, dict(redhawk=redhawk, ioloop=_ioloop))),
 
             # Domains
             (_DOMAIN_PATH + _LIST, DomainInfo, dict(redhawk=redhawk)),
@@ -120,6 +127,7 @@ class Application(tornado.web.Application):
             (_DEVICE_PATH + _ID + _BULKIO_PATH, BulkIOWebsocketHandler, dict(kind='device', _ioloop=_ioloop)),
         ]
         tornado.web.Application.__init__(self, handlers, *args, **kwargs)
+        tornado.ioloop.PeriodicCallback(redhawk.poll_domains, 2000).start()
 
 
 class IndexHandler(tornado.web.RequestHandler):

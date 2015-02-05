@@ -31,6 +31,7 @@ from domain import Domain, scan_domains
 
 class Redhawk(object):
     __domains = {}
+    statusListeners = []
 
     def _get_domain(self, domain_name):
         name = str(domain_name)
@@ -39,6 +40,38 @@ class Redhawk(object):
         #
         # return self.__domains[name]
         return Domain(domain_name)
+
+    def _status_message(self):
+        return {'domains': self.__domains.keys() }
+
+    def poll_domains(self):
+        domainIdsNow = scan_domains()
+        additions = [ domainId for domainId in domainIdsNow          if domainId not in self.__domains.keys() ]
+        removals =  [ domainId for domainId in self.__domains.keys() if domainId not in domainIdsNow ]
+        for a in additions:
+            self.__domains[a] = self._get_domain(a)
+        for r in removals:
+            self.__domains[r].disconnect()
+            del self.__domains[r]
+
+        if additions or removals:
+            message = self._status_message()
+            [h(message) for h in self.statusListeners]
+
+    def add_status_listener(self, callbackFn):
+        self.statusListeners.append(callbackFn)
+        callbackFn(self._status_message())
+
+    def rm_status_listener(self, callbackFn):
+        self.statusListeners.remove(callbackFn)
+
+    def add_event_listener(self, callbackFn, domain_name=None, topic=None):
+        if domain_name in __domains:
+            __domains[domain_name].add_event_listener(callbackFn, topic)
+
+    def rm_event_listener(self, callbackFn, domain_name=None, topic=None):
+        if domain_name in __domains:
+            __domains[domain_name].rm_event_listener(callbackFn, topic)
 
     ##############################
     # DOMAIN

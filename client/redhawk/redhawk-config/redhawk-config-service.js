@@ -52,11 +52,6 @@ angular.module('RedhawkConfig', [])
     this.componentsUrl = this.waveformUrl + '/components';
     this.componentUrl = this.componentsUrl + '/:componentId';
 
-    this.setLocation = function(host, port, basePath) {
-      this.restUrl = "http://" + host + (port? ':'+port: '') + (basePath? '/'+basePath: '') + this.restPath;
-      this.websocketUrl = 'ws://'+ host + (port? ':'+port: '') + (basePath? '/'+basePath: '') + this.wsPath;
-    };
-
     var provider = this;
     this.$get = function() {
       return {

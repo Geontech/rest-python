@@ -817,10 +817,9 @@ angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifica
     var statusSocket = function() {
       var socket = SubscriptionSocket.createNew();
 
-// TODO: Waiting for backend implementation
-//        socket.connect(RedhawkConfig.websocketUrl + '/status', function(){
-//          console.log("Connected to REDHAWK Status");
-//        });
+      socket.connect(RedhawkConfig.websocketUrl + '/status', function(){
+        console.log("Connected to REDHAWK Status");
+      });
 
       return socket;
     };
@@ -878,11 +877,10 @@ angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifica
       self.socket = SubscriptionSocket.createNew();
       var url = RedhawkConfig.websocketUrl + '/msg';
 
-// TODO: Waiting for backend implementation
-//        self.socket.connect(url, function() {
-//          console.log("Connected to Event Channel");
-//          if(on_connect) on_connect.call(self);
-//        });
+      self.socket.connect(url, function() {
+        console.log("Connected to Event Channel");
+        if(on_connect) on_connect.call(self);
+      });
 
       if(on_msg) {
         self.socket.addJSONListener(on_msg);
