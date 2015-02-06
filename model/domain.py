@@ -57,13 +57,14 @@ class WaveformReleaseError(Exception):
         return "Not able to release waveform '%s'. %s" % (self.name, self.msg)
 
 
+ODM_CHANNEL_NAME = 'ODM_Channel'
+
 class Domain:
     domMgr_ptr = None
     odmListener = None
     eventHandlers = None
     name = None
 
-    ODM_CHANNEL_NAME = 'ODM_CHANNEL'
 
     def __init__(self, domainname):
         self.name = domainname
@@ -95,6 +96,8 @@ class Domain:
         [ handler(event) for handler in handlers ]
 
     def _odm_response(self, event):
+        if 'sourceIOR' in event:
+            event['sourceIOR'] = "OMITTED"
         self._pass_event(event, ODM_CHANNEL_NAME)
 
     def _connect_odm_listener(self):
@@ -102,6 +105,8 @@ class Domain:
         self.odmListener.connect(self.domMgr_ptr)
         self.odmListener.deviceManagerAdded.addListener(self._odm_response)
         self.odmListener.deviceManagerRemoved.addListener(self._odm_response)
+        self.odmListener.deviceAdded.addListener(self._odm_response)
+        self.odmListener.deviceRemoved.addListener(self._odm_response)
         self.odmListener.applicationAdded.addListener(self._odm_response)
         self.odmListener.applicationRemoved.addListener(self._odm_response)
 

@@ -19,18 +19,19 @@
 #
 import logging
 from tornado import ioloop, websocket
+import json
 
 class EventHandler(websocket.WebSocketHandler):
 
-    def initialize(self, redhawk, ioloop=None):
+    def initialize(self, redhawk, _ioloop=None):
         self.redhawk = redhawk
         self.handlerType = None
 
         # explicit ioloop for unit testing
-        if not ioloop:
-            ioloop = ioloop.IOLoop.instance()
+        if not _ioloop:
+            _ioloop = ioloop.IOLoop.instance()
 
-        self.ioloop = ioloop
+        self.ioloop = _ioloop
 
     def open(self, arg):
         # register event handling.  Arg will be either status or msg
@@ -47,6 +48,7 @@ class EventHandler(websocket.WebSocketHandler):
 
     def on_message(self, message):
         logging.debug('stream message[%d]: %s', len(message), message)
+        message = json.loads(message)
         if 'msg' == self.handlerType:
             # Message format is {command: ADD/REMOVE, topic:channel_name, domainId:domainId }
             command = message.get('command', None)

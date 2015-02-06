@@ -66,12 +66,12 @@ class Redhawk(object):
         self.statusListeners.remove(callbackFn)
 
     def add_event_listener(self, callbackFn, domain_name=None, topic=None):
-        if domain_name in __domains:
-            __domains[domain_name].add_event_listener(callbackFn, topic)
+        if domain_name in self.__domains:
+            self.__domains[domain_name].add_event_listener(callbackFn, topic)
 
     def rm_event_listener(self, callbackFn, domain_name=None, topic=None):
-        if domain_name in __domains:
-            __domains[domain_name].rm_event_listener(callbackFn, topic)
+        if domain_name in self.__domains:
+            self.__domains[domain_name].rm_event_listener(callbackFn, topic)
 
     ##############################
     # DOMAIN

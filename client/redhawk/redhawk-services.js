@@ -146,10 +146,6 @@ angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifica
     var Domain = function(id) {
       var self = this;
 
-      self.getEvents = function() {
-        return self.events;
-      };
-
       /**
        * Update the data in this object (used for both REST and socket-based updates).
        * @param updateData
@@ -158,7 +154,6 @@ angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifica
       self._update = function(updateData) {
         if(updateData) {
           angular.extend(self, updateData);
-          processPorts(self.ports);
         }
       };
 
@@ -169,8 +164,6 @@ angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifica
        */
       self._load = function(id) {
         self._restId = id;
-
-        self.events = new EventChannel(id);
         self.devicemanagers = {};
         self.waveforms = {};
         self.components = {};
@@ -221,10 +214,6 @@ angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifica
        * @returns {*}
        */
       self.getDevice = function(id, deviceManagerId){
-        // FIXME: ?? The returned id is the instantiation ID from the node which is always 
-        // unique in a domain.
-        // Not sure why the author did this uniqueId() call...
-        // var devId = uniqueId(id, deviceManagerId);
         if(!self.devices[id]){
           self.devices[id] = new Device(id, self._restId, deviceManagerId);
         }
@@ -325,7 +314,8 @@ angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifica
 
       self.messages = [];
       self.channels = [];
-
+      // FIXME: the ability to getEventChannels -> dom.eventChannels GET does not exist...
+      /*
       var on_connect = function(){
         redhawk.getDomain(domainId).getEventChannels().$promise.then(function(channels){
           angular.forEach(channels, function(chan){
@@ -335,6 +325,12 @@ angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifica
             }
           });
         });
+      };
+      */
+      // For now, connecting to only ODM_Channel
+      var on_connect = function () {
+        eventMessageSocket.addChannel('ODM_Channel', domainId);
+        self.channels.push('ODM_Channel');
       };
       var on_msg = function(json){
         self.messages.push(json);
@@ -640,8 +636,6 @@ angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifica
       this._update = function(updateData) {
         if(updateData) {
           angular.extend(self, updateData);
-
-          //self.uniqueId = uniqueId(self.identifier);
         }
       };
       /**
@@ -771,6 +765,9 @@ angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifica
       updateProperty(properties, propertyId, newProperty);
     };
 
+    // FIXME: Whatever JSON someone was expecting to receive, they did not implement the push
+    // back at the server so I've implemented my own type.
+    /*
     RedhawkSocket.status.addJSONListener(function(event) {
       var element = event.ChangedElement;
       var elementType = element.eobj_type;
@@ -810,6 +807,7 @@ angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifica
           //console.log(event);
       }
     });
+    */
 
     return redhawk;
   }])
@@ -866,11 +864,11 @@ angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifica
         return {command: command, topic: topic, domainId: domainId}
       };
       self.addChannel = function(topic, domainId) {
-        console.log('Adding topic "'+topic+'".');
+        console.log('Adding topic "'+topic+'" for domainId "'+domainId+'."');
         self.socket.send(JSON.stringify(new Msg('ADD', topic, domainId)));
       };
       self.removeChannel = function(topic, domainId) {
-        console.log('Removing topic "'+topic+'".');
+        console.log('Removing topic "'+topic+'" for domainId "'+domainId+'."');
         self.socket.send(JSON.stringify(new Msg('REMOVE', topic, domainId)));
       };
 
