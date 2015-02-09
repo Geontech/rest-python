@@ -594,27 +594,30 @@ angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifica
             angular.extend(port, portData);
           }
         });
-      };
+      }; 
 
+      // Returns a promise
       self.feiQuery = function(portId) {
-        self.$promise = RedhawkREST.device.feiQuery(
+        return RedhawkREST.device.feiQuery(
           {portId: portId, deviceId: self.id, managerId: self.deviceManager.id, domainId: self.domainId},
           function(data) { self._updatePortWithData(data); }
         ).$promise;
       };
 
+      // Returns a promise
       self.feiQueryId = function(portId, allocationId) {
-        self.$promise = RedhawkREST.device.feiQueryId(
+        return RedhawkREST.device.feiQueryId(
           {allocationId: allocationId, portId: portId, deviceId: self.id, managerId: self.deviceManager.id, domainId: self.domainId},
           function(data) { self._updatePortWithData(data); }
         ).$promise;
       };
 
+      // Returns a promise
       self.feiTune = function(portId, allocationId, properties) {
         return RedhawkRest.device.feiTune(
             {allocationId: allocationId, portId: portId, deviceId: self.id, managerId: self.deviceManager.id, domainId: self.domainId},
             {properties: properties},
-            function () { self.feiQueryId(portId, allocationId); }
+            function () { return self.feiQueryId(portId, allocationId); }
         );
       };
 
