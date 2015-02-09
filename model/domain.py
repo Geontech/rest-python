@@ -234,14 +234,14 @@ class Domain:
         ret_dict = []
         for dev in devs:
             ret_dict.append({'name': dev.name, 'id': dev._id})
-            return ret_dict
+        return ret_dict
 
     def services(self, dev_mgr_id):
         svcs = self.find_service(dev_mgr_id)
         ret_dict = []
         for svc in svcs:
             ret_dict.append({'name': svc.name, 'id': svc._id})
-            return ret_dict
+        return ret_dict
 
     @staticmethod
     def locate_by_path(path, path_type):
