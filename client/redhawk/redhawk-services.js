@@ -164,7 +164,7 @@ angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifica
        */
       self._load = function(id) {
         self._restId = id;
-        self.devicemanagers = {};
+        self.deviceManagers = {};
         self.waveforms = {};
         self.components = {};
         self.devices = {};
@@ -227,11 +227,11 @@ angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifica
        * @returns {*}
        */
       self.getDeviceManager = function(id) {
-        if(!self.devicemanagers[id]) {
-          self.devicemanagers[id] = new DeviceManager(id, self._restId);
+        if(!self.deviceManagers[id]) {
+          self.deviceManagers[id] = new DeviceManager(id, self._restId);
         }
 
-        return self.devicemanagers[id];
+        return self.deviceManagers[id];
       };
 
       /**
@@ -741,7 +741,7 @@ angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifica
           properties = component.properties;
         }
       } else if(type=='deviceManagers' && subType=='properties') {
-        var deviceManager = domain.devicemanagers[typeId];
+        var deviceManager = domain.deviceManagers[typeId];
         if(deviceManager) {
           properties = deviceManager.properties;
         }
