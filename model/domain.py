@@ -96,8 +96,8 @@ class Domain:
         [ handler(event) for handler in handlers ]
 
     def _odm_response(self, event):
-        if 'sourceIOR' in event:
-            event['sourceIOR'] = "OMITTED"
+        if hasattr(event, 'sourceIOR'):
+            event.sourceIOR = "OMITTED"
         self._pass_event(event, ODM_CHANNEL_NAME)
 
     def _connect_odm_listener(self):
