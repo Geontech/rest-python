@@ -57,7 +57,7 @@ _PORT_PATH = r'/ports'
 _FEI_TUNER_ID = r'/([^/]+Tuner[^/]+)'
 _FEI_RFINFO_ID = r'/(RFInfo[^/]+)'
 _FEI_RFSOURCE_ID = r'/(RFSource[^/]+)'
-_FEI_GPS_ID = r'/(GPS[^/]+)'
+_FEI_GPS_ID = r'/((gps|GPS)[^/]*)'
 _FEI_NAVDATA_ID = r'/(NavData[^/]+)'
 _BULKIO_PATH = _PORT_PATH + _ID + r'/bulkio'
 
