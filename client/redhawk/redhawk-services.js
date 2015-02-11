@@ -530,16 +530,27 @@ angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifica
        * @see {Domain._load()}
        */
       self._load = function(id, domainId, managerId) {
-        self.$promise = RedhawkREST.device.query({deviceId: id, managerId: managerId, domainId: domainId}, function(data){
-          self._update(data);
-          self.deviceManager = {id: managerId};
-          self.domainId = domainId;
-        }).$promise;
+        self.$promise = RedhawkREST.device.query({deviceId: id, managerId: managerId, domainId: domainId}, 
+          function(data){
+            self._update(data);
+            self.deviceManager = {id: managerId};
+            self.domainId = domainId;
+          }
+        ).$promise;
       };
       /**
        * @see {Domain._reload()}
        */
-      self._reload = function() { self._load(self.id, self.domainId, self.deviceManager.id); };
+      self._reload = function() {
+        if (!self.$promise.$$state.status) {
+          console.log('Skipping reload call since _load executing');
+          return; // Skip...ongoing query.  
+        }
+        self._load(
+          self.id, 
+          self.domainId,
+          self.deviceManager.id);
+      };
 
       self.configure = function(properties) {
         return RedhawkREST.device.save(
@@ -568,8 +579,8 @@ angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifica
       // Returns items in oldList not found in newList
       var filterOldList = function(oldList, newList) {
         var out = [];
+        var unique = true;
         for (var oldI = 0; oldI < oldList.length; oldI++) {
-          var unique = true;
           for (var newI = 0; newI < newList.length; newI++) {
             if (oldList[oldI] == newList[newI]) {
               unique = false;
@@ -578,6 +589,7 @@ angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifica
           }
           if (unique) 
             out.push(oldList[oldI]);
+          unique = true;
         }
         return out;
       };
@@ -586,13 +598,13 @@ angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifica
         // portData is the FEITuner structure w/ an updated allocation ID list and no id-keys filled.
         // Find the port and remove any invalid allocation ids, then extend to update valid ones.
         angular.forEach(self.ports, function(port) {
-          if (port.name == portData.name) {
+          if (port.name == portData.name && port.active_allocation_ids) {
             var oldIDs = filterOldList(port.active_allocation_ids, portData.active_allocation_ids);
             for (var i=0; i < oldIDs.length; i++) {
               delete port[oldIDs[i]];
             }
-            angular.extend(port, portData);
           }
+          angular.extend(port, portData);
         });
       }; 
 
