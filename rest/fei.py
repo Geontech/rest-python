@@ -211,6 +211,8 @@ class FEIOnlyAttributeBaseHandler(JsonHandler, FEIHelper):
         for k, v in s.__dict__.items():
             if hasattr(v, '__dict__'):
                 outobj[k] = self._dict_struct(v)
+            elif v != v: # NaN detection
+                outobj[k] = 'NaN'
             else:
                 outobj[k] = v
         return outobj
@@ -239,7 +241,7 @@ class FEIOnlyAttributeBaseHandler(JsonHandler, FEIHelper):
                 else:
                     for k,v in options.items():
                         info[k] = self.fixobj(v)
-
+                        
             self._render_json(info)
 
         except (FEIPortNotFoundException, Exception) as e:
