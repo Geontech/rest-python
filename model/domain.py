@@ -29,6 +29,12 @@ from ossie.utils.redhawk.channels import ODMListener
 def scan_domains():
     return redhawk.scan()
 
+def event_to_dict(event):
+    if hasattr(event, 'sourceIOR'):
+        event.sourceIOR = 'OMITTED'
+    event.sourceCategory = str(event.sourceCategory);
+
+    return event.__dict__
 
 class ResourceNotFound(Exception):
     def __init__(self, resource='resource', name='Unknown'):
@@ -92,12 +98,11 @@ class Domain:
             self.eventHandlers[topic].remove(callbackFn);
 
     def _pass_event(self, event, topic):
+        event = event_to_dict(event)
         handlers = self.eventHandlers.get(topic, [])
         [ handler(event) for handler in handlers ]
 
     def _odm_response(self, event):
-        if hasattr(event, 'sourceIOR'):
-            event.sourceIOR = "OMITTED"
         self._pass_event(event, ODM_CHANNEL_NAME)
 
     def _connect_odm_listener(self):
