@@ -287,8 +287,8 @@ angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifica
    * @param id - {string} Domain name
    * @constructor
    */
-  .factory('RedhawkDomain', ['RedhawkREST', 'RedhawkDeviceManager', 'RedhawkDevice', 'RedhawkWaveform', 'RedhawkComponent', 'RedhawkEventChannel',
-    function(RedhawkREST, RedhawkDeviceManager, RedhawkDevice, RedhawkWaveform, RedhawkComponent, RedhawkEventChannel) {
+  .factory('RedhawkDomain', ['$injector', 'RedhawkREST', 'RedhawkDeviceManager', 'RedhawkDevice', 'RedhawkWaveform', 'RedhawkComponent', 'RedhawkEventChannel',
+    function($injector, RedhawkREST, RedhawkDeviceManager, RedhawkDevice, RedhawkWaveform, RedhawkComponent, RedhawkEventChannel) {
       return function(id) {
         var self = this;
 
@@ -363,11 +363,13 @@ angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifica
          * Get a device object from this domain.
          * @param id
          * @param deviceManagerId
+         * @param factoryName
          * @returns {*}
          */
-        self.getDevice = function(id, deviceManagerId){
+        self.getDevice = function(id, deviceManagerId, factoryName){
           if(!self.devices[id]){
-            self.devices[id] = new RedhawkDevice(id, self._restId, deviceManagerId);
+            var constructor = (factoryName) ? $injector.get(factoryName) : RedhawkDevice;
+            self.devices[id] = new constructor(id, self._restId, deviceManagerId);
           }
 
           return self.devices[id];
@@ -376,11 +378,13 @@ angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifica
         /**
          * Get a device manager object from this domain.
          * @param id
+         * @param factoryName
          * @returns {*}
          */
-        self.getDeviceManager = function(id) {
+        self.getDeviceManager = function(id, factoryName) {
           if(!self.deviceManagers[id]) {
-            self.deviceManagers[id] = new RedhawkDeviceManager(id, self._restId);
+            var constructor = (factoryName) ? $injector.get(factoryName) : RedhawkDeviceManager;
+            self.deviceManagers[id] = new constructor(id, self._restId);
           }
 
           return self.deviceManagers[id];
@@ -390,11 +394,13 @@ angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifica
          * Get a component object from this domain.
          * @param id
          * @param waveformId
+         * @param factoryName
          * @returns {*}
          */
-        self.getComponent = function(id, waveformId){
+        self.getComponent = function(id, waveformId, factoryName){
           if(!self.components[id]) {
-            self.components[id] = new RedhawkComponent(id, self._restId, waveformId);
+            var constructor = (factoryName) ? $injector.get(factoryName) : RedhawkComponent;
+            self.components[id] = new constructor(id, self._restId, waveformId);
           }
 
           return self.components[id];
@@ -403,11 +409,13 @@ angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifica
         /**
          * Get a waveform object from this domain.
          * @param id
+         * @param factoryName
          * @returns {*}
          */
-        self.getWaveform = function(id){
+        self.getWaveform = function(id, factoryName){
           if(!self.waveforms[id]) {
-            self.waveforms[id] = new RedhawkWaveform(id, self._restId);
+            var constructor = (factoryName) ? $injector.get(factoryName) : RedhawkWaveform;
+            self.waveforms[id] = new constructor(id, self._restId);
           }
 
           return self.waveforms[id];
