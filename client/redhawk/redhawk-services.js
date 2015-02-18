@@ -648,7 +648,7 @@ angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifica
       /**
        * @see {Domain._update()}
        */
-      this._update = function(updateData) {
+      self._update = function(updateData) {
         if(updateData) {
           angular.extend(self, updateData);
         }
