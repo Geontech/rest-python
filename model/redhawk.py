@@ -28,9 +28,16 @@ from _utils.tasking import background_task
 
 from domain import Domain, scan_domains, ResourceNotFound
 
+from tornado.websocket import WebSocketClosedError
+
 
 class Redhawk(object):
-    __domains = {}
+    __domains = None
+    statusListeners = None
+    
+    def __init__(self):
+        self.__domains = {}
+        self.statusListeners = []
 
     def _get_domain(self, domain_name):
         name = str(domain_name)
@@ -38,7 +45,46 @@ class Redhawk(object):
             self.__domains[name] = Domain(domain_name)
         
         return self.__domains[name]
-    
+
+    def _status_message(self):
+        return {'domains': self.__domains.keys() }
+
+    def poll_domains(self):
+        domainIdsNow = scan_domains()
+        additions = [ domainId for domainId in domainIdsNow          if domainId not in self.__domains.keys() ]
+        removals =  [ domainId for domainId in self.__domains.keys() if domainId not in domainIdsNow ]
+        for a in additions:
+            self.__domains[a] = self._get_domain(a)
+        for r in removals:
+            self.__domains[r].disconnect()
+            del self.__domains[r]
+
+        def _attemptCallback(fn, msg):
+            try:
+                fn(msg)
+                return True
+            except WebSocketClosedError:
+                return False
+
+        if additions or removals:
+            message = self._status_message()
+            self.statusListeners[:] = [h for h in self.statusListeners if _attemptCallback(h, message)]
+
+    def add_status_listener(self, callbackFn):
+        self.statusListeners.append(callbackFn)
+        callbackFn(self._status_message())
+
+    def rm_status_listener(self, callbackFn):
+        self.statusListeners.remove(callbackFn)
+
+    def add_event_listener(self, callbackFn, domain_name=None, topic=None):
+        if domain_name in self.__domains:
+            self.__domains[domain_name].add_event_listener(callbackFn, topic)
+
+    def rm_event_listener(self, callbackFn, domain_name=None, topic=None):
+        if domain_name in self.__domains:
+            self.__domains[domain_name].rm_event_listener(callbackFn, topic)
+            
     ##############################
     # DOMAIN
 
@@ -135,6 +181,36 @@ class Redhawk(object):
     def get_device(self, domain_name, device_manager_id, device_id):
         dom = self._get_domain(domain_name)
         return dom.find_device(device_manager_id, device_id)
+
+    def _get_device(self, domain_name, device_manager_id, device_id):
+        dom = self._get_domain(domain_name)
+        return dom.find_device(device_manager_id, device_id)
+
+    def _get_prop_changes(self, current_props, new_properties):
+        changes = {}
+        for prop in current_props:
+            if prop.id in new_properties:
+                if new_properties[prop.id] != prop.queryValue():
+                    changes[prop.id] = (type(prop.queryValue()))(new_properties[prop.id])
+        return changes
+
+    @background_task
+    def device_configure(self, domain_name, device_manager_id, device_id, new_properties):
+        dev = self._get_device(domain_name, device_manager_id, device_id)
+        changes = self._get_prop_changes(dev._properties, new_properties)
+        return dev.configure(changes)
+
+    @background_task
+    def device_allocate(self, domain_name, device_manager_id, device_id, new_properties):
+        dev = self._get_device(domain_name, device_manager_id, device_id)
+        changes = self._get_prop_changes(dev._properties, new_properties)
+        return dev.allocateCapacity(changes)
+
+    @background_task
+    def device_deallocate(self, domain_name, device_manager_id, device_id, new_properties):
+        dev = self._get_device(domain_name, device_manager_id, device_id)
+        changes = self._get_prop_changes(dev._properties, new_properties)
+        return dev.deallocateCapacity(changes)
 
     ##############################
     # SERVICE

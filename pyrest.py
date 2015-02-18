@@ -22,11 +22,13 @@ import os
 
 from rest.domain import DomainInfo, DomainProperties
 from rest.application import Applications
-from rest.component import Component, ComponentProperties
+from rest.component import Components, ComponentProperties
 from rest.devicemanager import DeviceManagers
 from rest.device import Devices, DeviceProperties
+from rest.fei import FEITunerHandler, FEIRFInfoHandler, FEIRFSourceHandler, FEIGPSHandler, FEINavDataHandler
 from rest.port import PortHandler
 from rest.bulkio_handler import BulkIOWebsocketHandler
+from rest.event_handler import EventHandler
 
 import tornado.httpserver
 import tornado.web
@@ -39,17 +41,23 @@ from model.redhawk import Redhawk
 from tornado.options import define, options
 
 define('port', default=8080, type=int, help="server port")
-define("debug", default=False, type=bool, help="Enable Tornado debug mode.  Reloads code")
+define('debug', default=False, type=bool, help="Enable Tornado debug mode.  Reloads code")
 
 _ID = r'/([^/]+)'
 _LIST = r'/?'
-_DOMAIN_PATH = r'/redhawk/rest/domains'
+_BASE_URL = r'/redhawk/rest'
+_DOMAIN_PATH = _BASE_URL + r'/domains'
 _APPLICATION_PATH = _DOMAIN_PATH + _ID + r'/applications'
 _COMPONENT_PATH = _APPLICATION_PATH + _ID + r'/components'
 _DEVICE_MGR_PATH = _DOMAIN_PATH + _ID + r'/deviceManagers'
 _DEVICE_PATH = _DEVICE_MGR_PATH + _ID + r'/devices'
 _PROPERTIES_PATH = r'/properties'
 _PORT_PATH = r'/ports'
+_FEI_TUNER_ID = r'/([^/]+Tuner[^/]+)'
+_FEI_RFINFO_ID = r'/(RFInfo[^/]+)'
+_FEI_RFSOURCE_ID = r'/(RFSource[^/]+)'
+_FEI_GPS_ID = r'/((gps|GPS)[^/]*)'
+_FEI_NAVDATA_ID = r'/(NavData[^/]+)'
 _BULKIO_PATH = _PORT_PATH + _ID + r'/bulkio'
 
 
@@ -65,6 +73,11 @@ class Application(tornado.web.Application):
         handlers = [
             (r"/apps/(.*)/$", IndexHandler),
             (r"/apps/(.*)", tornado.web.StaticFileHandler, {"path": os.path.join(cwd, "apps")}),
+            (r"/client/(.*)", tornado.web.StaticFileHandler, {"path": os.path.join(cwd, "client")}),
+
+            # Top-level Event Handler REDHAWK status channel and messaging system
+            # The event handler sorts out what to do for us.
+            (_BASE_URL + r'/(status|msg)', EventHandler, dict(redhawk=redhawk, _ioloop=_ioloop)),
 
             # Domains
             (_DOMAIN_PATH + _LIST, DomainInfo, dict(redhawk=redhawk)),
@@ -73,6 +86,10 @@ class Application(tornado.web.Application):
                 dict(redhawk=redhawk)),
             (_DOMAIN_PATH + _ID + _PROPERTIES_PATH + _ID, DomainProperties, 
                 dict(redhawk=redhawk)),
+            # FYI: Added these two lines based on redhawk-config-service.js @ the client
+            #      but no tooling exists to make this work easily in 1.10
+            # (_DOMAIN_PATH + _ID + r'eventChannels', DomainInfo, dict(redhawk=redhawk)),
+            # (_DOMAIN_PATH + _ID + r'eventChannels' + _ID, EventHandler, dict(redhawk=redhawk)),
 
             # Applications
             (_APPLICATION_PATH + _LIST, Applications, dict(redhawk=redhawk)),
@@ -85,8 +102,8 @@ class Application(tornado.web.Application):
                 dict(redhawk=redhawk, kind='application', _ioloop=_ioloop)),
 
             # Components
-            (_COMPONENT_PATH + _LIST, Component, dict(redhawk=redhawk)),
-            (_COMPONENT_PATH + _ID, Component, dict(redhawk=redhawk)),
+            (_COMPONENT_PATH + _LIST, Components, dict(redhawk=redhawk)),
+            (_COMPONENT_PATH + _ID, Components, dict(redhawk=redhawk)),
             (_COMPONENT_PATH + _ID + _PROPERTIES_PATH + _LIST, ComponentProperties,
                 dict(redhawk=redhawk)),
             (_COMPONENT_PATH + _ID + _PROPERTIES_PATH + _ID, ComponentProperties,
@@ -105,18 +122,25 @@ class Application(tornado.web.Application):
             # Devices
             (_DEVICE_PATH + _LIST, Devices, dict(redhawk=redhawk)),
             (_DEVICE_PATH + _ID, Devices, dict(redhawk=redhawk)),
-            (_DEVICE_PATH + _ID + _PROPERTIES_PATH + _LIST, DeviceProperties,
-                dict(redhawk=redhawk)),
-            (_DEVICE_PATH + _ID + _PROPERTIES_PATH + _ID, DeviceProperties,
-                dict(redhawk=redhawk)),
-            (_DEVICE_PATH + _ID + _PORT_PATH + _LIST, PortHandler,
-                dict(redhawk=redhawk, kind='device')),
-            (_DEVICE_PATH + _ID + _PORT_PATH + _ID, PortHandler,
-                dict(redhawk=redhawk, kind='device')),
-            (_DEVICE_PATH + _ID + _BULKIO_PATH, BulkIOWebsocketHandler,
-                dict(redhawk=redhawk, kind='device', _ioloop=_ioloop)),
+            (_DEVICE_PATH + _ID + _PROPERTIES_PATH + _LIST, DeviceProperties, dict(redhawk=redhawk)),
+            (_DEVICE_PATH + _ID + _PROPERTIES_PATH + _ID, DeviceProperties, dict(redhawk=redhawk)),
+            (_DEVICE_PATH + _ID + _PORT_PATH + _LIST, PortHandler, dict(kind='device')),
+            (_DEVICE_PATH + _ID + _PORT_PATH + _FEI_TUNER_ID + _LIST, FEITunerHandler, dict(redhawk=redhawk)),
+            (_DEVICE_PATH + _ID + _PORT_PATH + _FEI_TUNER_ID + _ID + _LIST, FEITunerHandler, dict(redhawk=redhawk)),
+            (_DEVICE_PATH + _ID + _PORT_PATH + _FEI_TUNER_ID + _ID + _ID, FEITunerHandler, dict(redhawk=redhawk)),
+            (_DEVICE_PATH + _ID + _PORT_PATH + _FEI_RFINFO_ID + _LIST, FEIRFInfoHandler, dict(redhawk=redhawk)),
+            (_DEVICE_PATH + _ID + _PORT_PATH + _FEI_RFINFO_ID + _ID, FEIRFInfoHandler, dict(redhawk=redhawk)),
+            (_DEVICE_PATH + _ID + _PORT_PATH + _FEI_RFSOURCE_ID + _LIST, FEIRFSourceHandler, dict(redhawk=redhawk)),
+            (_DEVICE_PATH + _ID + _PORT_PATH + _FEI_RFSOURCE_ID + _ID, FEIRFSourceHandler, dict(redhawk=redhawk)),
+            (_DEVICE_PATH + _ID + _PORT_PATH + _FEI_GPS_ID + _LIST, FEIGPSHandler, dict(redhawk=redhawk)),
+            (_DEVICE_PATH + _ID + _PORT_PATH + _FEI_GPS_ID + _ID, FEIGPSHandler, dict(redhawk=redhawk)),
+            (_DEVICE_PATH + _ID + _PORT_PATH + _FEI_NAVDATA_ID + _LIST, FEINavDataHandler, dict(redhawk=redhawk)),
+            (_DEVICE_PATH + _ID + _PORT_PATH + _FEI_NAVDATA_ID + _ID, FEINavDataHandler, dict(redhawk=redhawk)),  
+            (_DEVICE_PATH + _ID + _PORT_PATH + _ID, PortHandler, dict(kind='device')), # Default port handler
+            (_DEVICE_PATH + _ID + _BULKIO_PATH, BulkIOWebsocketHandler, dict(kind='device', _ioloop=_ioloop)),
         ]
         tornado.web.Application.__init__(self, handlers, *args, **kwargs)
+        tornado.ioloop.PeriodicCallback(redhawk.poll_domains, 2000).start()
 
 
 class IndexHandler(tornado.web.RequestHandler):

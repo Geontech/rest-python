@@ -30,6 +30,12 @@ import traceback
 def scan_domains():
     return redhawk.scan()
 
+def event_to_dict(event):
+    if hasattr(event, 'sourceIOR'):
+        event.sourceIOR = 'OMITTED'
+    event.sourceCategory = str(event.sourceCategory);
+
+    return event.__dict__
 
 class ResourceNotFound(Exception):
     def __init__(self, resource='resource', name='Unknown'):
@@ -58,31 +64,56 @@ class ApplicationReleaseError(Exception):
         return "Not able to release waveform '%s'. %s" % (self.name, self.msg)
 
 
+ODM_CHANNEL_NAME = 'ODM_Channel'
+
 class Domain:
     domMgr_ptr = None
     odmListener = None
-    eventHandlers = []
+    eventHandlers = None
     name = None
+
 
     def __init__(self, domainname):
         logging.trace("Estasblishing domain %s", domainname, exc_info=True)
         self.name = domainname
+        self.eventHandlers = {ODM_CHANNEL_NAME:[]}
         try:
             self._establish_domain()
         except StandardError, e:
             logging.warn("Unable to find domain %s", e, exc_info=1)
             raise ResourceNotFound("domain", domainname)
 
+    def disconnect(self):
+        self.odmListener.disconnect()
+        # TODO: When eventHandlers maps to other event handler entities, 
+        # be sure to disconnect from them.
+
+    def add_event_listener(self, callbackFn, topic=None):
+        # FIXME: Right now we only support ODM...
+        self.eventHandlers[ODM_CHANNEL_NAME].append(callbackFn)
+
+    def rm_event_listener(self, callbackFn, topic=None):
+        if not topic:
+            for k in self.eventHandlers:
+                self.rm_event_listener(callbackFn, k)
+        else:
+            self.eventHandlers[topic].remove(callbackFn);
+
+    def _pass_event(self, event, topic):
+        event = event_to_dict(event)
+        handlers = self.eventHandlers.get(topic, [])
+        [ handler(event) for handler in handlers ]
+
     def _odm_response(self, event):
-        for eventH in self.eventHandlers:
-            eventH.event_queue.put(event)
+        self._pass_event(event, ODM_CHANNEL_NAME)
 
     def _connect_odm_listener(self):
-        
         self.odmListener = ODMListener()
         self.odmListener.connect(self.domMgr_ptr)
         self.odmListener.deviceManagerAdded.addListener(self._odm_response)
         self.odmListener.deviceManagerRemoved.addListener(self._odm_response)
+        self.odmListener.deviceAdded.addListener(self._odm_response)
+        self.odmListener.deviceRemoved.addListener(self._odm_response)
         self.odmListener.applicationAdded.addListener(self._odm_response)
         self.odmListener.applicationRemoved.addListener(self._odm_response)
 
@@ -217,6 +248,6 @@ class Domain:
         svcs = self.find_service(dev_mgr_id)
         ret_dict = []
         for svc in svcs:
-            ret_dict.append({'name': svc._instanceName, 'id': svc._refid})
-            return ret_dict
+            ret_dict.append({'name': svc.name, 'id': svc._id})
+        return ret_dict
 
