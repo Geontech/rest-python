@@ -28,6 +28,8 @@ from _utils.tasking import background_task
 
 from domain import Domain, scan_domains
 
+from tornado.websocket import WebSocketClosedError
+
 
 class Redhawk(object):
     __domains = {}
@@ -54,9 +56,16 @@ class Redhawk(object):
             self.__domains[r].disconnect()
             del self.__domains[r]
 
+        def _attemptCallback(fn, msg):
+            try:
+                fn(msg)
+                return True
+            except WebSocketClosedError:
+                return False
+
         if additions or removals:
             message = self._status_message()
-            [h(message) for h in self.statusListeners]
+            self.statusListeners[:] = [h for h in self.statusListeners if _attemptCallback(h, message)]
 
     def add_status_listener(self, callbackFn):
         self.statusListeners.append(callbackFn)
