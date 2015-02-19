@@ -148,10 +148,10 @@ angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifica
               domain._reload();
             break;
           case "ScaWaveform":
-            var waveformId = event.waveformInstance;
-            if(domain.waveforms[waveformId]){
-              //console.log("Updating Waveform  "+waveformId);
-              domain.waveforms[waveformId]._update(element);
+            var applicationId = event.waveformInstance;
+            if(domain.waveforms[applicationId]){
+              //console.log("Updating Waveform  "+applicationId);
+              domain.waveforms[applicationId]._update(element);
             }
             break;
           case "ScaComponent":
@@ -452,14 +452,14 @@ angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifica
         /**
          * Get a component object from this domain.
          * @param id
-         * @param waveformId
+         * @param applicationId
          * @param factoryName
          * @returns {*}
          */
-        self.getComponent = function(id, waveformId, factoryName){
+        self.getComponent = function(id, applicationId, factoryName){
           if(!self.components[id]) {
             var constructor = (factoryName) ? $injector.get(factoryName) : RedhawkComponent;
-            self.components[id] = new constructor(id, self._restId, waveformId);
+            self.components[id] = new constructor(id, self._restId, applicationId);
           }
 
           return self.components[id];
@@ -490,6 +490,7 @@ angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifica
             self.availableWaveforms.$promise =
                 RedhawkREST.waveform.status({domainId: self._restId}).$promise.then(function(data){
                   angular.forEach(data['available'], function(item){
+                    console.log(item['name']);
                     this.push(item['name']);
                   },self.availableWaveforms);
 
@@ -555,7 +556,7 @@ angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifica
          * @see {Domain._load()}
          */
         self._load = function(id, domainId) {
-          self.$promise = RedhawkREST.waveform.query({waveformId: id, domainId: domainId}, function(data){
+          self.$promise = RedhawkREST.waveform.query({applicationId: id, domainId: domainId}, function(data){
             self.domainId = domainId;
             self._update(data);
           }).$promise;
@@ -588,7 +589,7 @@ angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifica
          */
         self.start = function() {
           return RedhawkREST.waveform.update(
-            {waveformId: self.id, domainId: domainId}, {started: true},
+            {applicationId: self.id, domainId: domainId}, {started: true},
             function(){
               notify.success("Waveform "+self.name+" started.");
               self._reload();
@@ -602,7 +603,7 @@ angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifica
          */
         self.stop = function() {
           return RedhawkREST.waveform.update(
-            {waveformId: self.id, domainId: domainId},{started: false},
+            {applicationId: self.id, domainId: domainId},{started: false},
             function(){
               notify.success("Waveform "+self.name+" stopped.");
               self._reload();
@@ -616,7 +617,7 @@ angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifica
          */
         self.release = function() {
           return RedhawkREST.waveform.release(
-            {waveformId: self.id, domainId: self.domainId},{},
+            {applicationId: self.id, domainId: self.domainId},{},
             function(){
               notify.success("Waveform "+self.name+" released.");
               Redhawk.getDomain(self.domainId)._reload();
@@ -628,7 +629,7 @@ angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifica
          * @see {Domain.configure()}
          */
         self.configure = function(properties) {
-          return RedhawkREST.waveform.configure({waveformId: self.id, domainId: self.domainId}, {properties: properties});
+          return RedhawkREST.waveform.configure({applicationId: self.id, domainId: self.domainId}, {properties: properties});
         };
 
         self._load(id, domainId);
@@ -645,12 +646,12 @@ angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifica
    *
    * @param id
    * @param domainId
-   * @param waveformId
+   * @param applicationId
    * @constructor
    */
   .factory('RedhawkComponent', ['RedhawkREST',
     function (RedhawkREST) {
-      var RedhawkComponent = function(id, domainId, waveformId) {
+      var RedhawkComponent = function(id, domainId, applicationId) {
         var self = this;
 
         /**
@@ -667,9 +668,9 @@ angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifica
         /**
          * @see {Domain._load()}
          */
-        self._load = function(id, domainId, waveformId) {
-          self.$promise = RedhawkREST.component.query({componentId: id, waveformId: waveformId, domainId: domainId}, function(data){
-            self.waveform = {id: waveformId};
+        self._load = function(id, domainId, applicationId) {
+          self.$promise = RedhawkREST.component.query({componentId: id, applicationId: applicationId, domainId: domainId}, function(data){
+            self.waveform = {id: applicationId};
             self.domainId = domainId;
             self._update(data);
           }).$promise;
@@ -684,13 +685,13 @@ angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifica
          */
         self.configure = function(properties) {
           return RedhawkREST.component.configure(
-              {componentId: self.id, waveformId: self.waveform.id, domainId: self.domainId},
+              {componentId: self.id, applicationId: self.waveform.id, domainId: self.domainId},
               {properties: properties},
               function(){ self._reload(); }
           );
         };
 
-        self._load(id, domainId, waveformId);
+        self._load(id, domainId, applicationId);
       };
 
       // External API Method for extended factories
