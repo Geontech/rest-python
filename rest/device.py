@@ -31,7 +31,7 @@ from helper import PropertyHelper, PortHelper
 from tornado import web
 import json
 
-class Device(JsonHandler, PropertyHelper, PortHelper):
+class Devices(JsonHandler, PropertyHelper, PortHelper):
     @gen.coroutine
     def get(self, domainName, managerId, deviceId=None):
         if deviceId:

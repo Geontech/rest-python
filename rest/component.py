@@ -32,7 +32,7 @@ from helper import PropertyHelper, PortHelper
 import json
 
 
-class Component(JsonHandler, PropertyHelper, PortHelper):
+class Components(JsonHandler, PropertyHelper, PortHelper):
     @gen.coroutine
     def get(self, domain_name, app_id, comp_id=None):
         if comp_id:

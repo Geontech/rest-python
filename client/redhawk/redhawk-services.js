@@ -111,19 +111,18 @@ angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifica
         return redhawk.domainIds;
       };
 
-      // Trick for getting around circular dependencies
-      var RedhawkDomain;
-
       /**
        * Returns a resource with a promise to a {Domain} object.
        *
        * @param id - String ID of the domain
+       * @param factoryName - String name to inject as the constructor rather than RedhawkDomain
        * @returns {Domain}
        */
-      redhawk.getDomain = function(id){
-        if (!RedhawkDomain) { RedhawkDomain = $injector.get('RedhawkDomain'); }
+      redhawk.getDomain = function(id, factoryName){
+        var RedhawkDomainConstructor = (factoryName) ? $injector.get(factoryName) : $injector.get('RedhawkDomain');
+
         if(!redhawk.__domains[id])
-          redhawk.__domains[id] = new RedhawkDomain(id);
+          redhawk.__domains[id] = new RedhawkDomainConstructor(id);
         return redhawk.__domains[id];
       };
 
@@ -281,15 +280,73 @@ angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifica
       };
   }])
 
+  /**
+   * Creates a listener to all event channels and stores the messages.
+   *
+   * @constructor
+   */
+  .factory('RedhawkEventChannel', ['RedhawkREST', 'RedhawkSocket',
+    function(RedhawkREST, RedhawkSocket) {
+      return function(domainId, parent, parent_on_msg, parent_on_connect) {
+        var self = this;
+
+        self.messages = [];
+        self.channels = ['ODM_Channel']; // For now, only supports ODM Channel
+        // FIXME: the ability to getEventChannels -> dom.eventChannels GET does not exist...
+        /*
+        var on_connect = function(){
+          redhawk.getDomain(domainId).getEventChannels().$promise.then(function(channels){
+            angular.forEach(channels, function(chan){
+              if(self.channels.indexOf(chan.id) == -1) {
+                eventMessageSocket.addChannel(chan.id, domainId);
+                self.channels.push(chan.id);
+              }
+            });
+          });
+        };
+        */
+        // For now, connecting to only ODM_Channel
+        var on_connect = function () {
+          // See earlier FIXME above regarding integration with dom.eventChannels
+          angular.forEach(self.channels, function(channel) {
+            eventMessageSocket.addChannel(channel, domainId);
+          });
+          if (parent_on_connect)
+            parent_on_connect(self);
+        };
+        var on_msg = function(json){
+          self.messages.push(json);
+
+          if(self.messages.length > 500)
+            angular.copy(self.messages.slice(-500), self.messages);
+
+          if (parent_on_msg)
+            parent_on_msg.call(parent, json);
+        };
+        var eventMessageSocket = RedhawkSocket.eventChannel(on_msg, on_connect);
+        eventMessageSocket.socket.addBinaryListener(function(data){
+          console.log("WARNING Event Channel Binary Data!");
+        });
+
+        self.getMessages = function() {
+          return self.messages;
+        };
+        self.getChannelNames = function() {
+          return self.channels;
+        };
+      };
+  }])
+
   /** 
    * Angular-style resource that encapsulates the Domain interface from the server.
    *
    * @param id - {string} Domain name
    * @constructor
    */
-  .factory('RedhawkDomain', ['$injector', 'RedhawkREST', 'RedhawkDeviceManager', 'RedhawkDevice', 'RedhawkWaveform', 'RedhawkComponent', 'RedhawkEventChannel',
-    function($injector, RedhawkREST, RedhawkDeviceManager, RedhawkDevice, RedhawkWaveform, RedhawkComponent, RedhawkEventChannel) {
-      return function(id) {
+  .factory('RedhawkDomain', 
+           ['$injector', 'RedhawkREST', 'RedhawkDeviceManager', 'RedhawkDevice', 'RedhawkWaveform', 'RedhawkComponent', 'RedhawkEventChannel',
+    function($injector,   RedhawkREST,   RedhawkDeviceManager,   RedhawkDevice,   RedhawkWaveform,   RedhawkComponent,   RedhawkEventChannel) {
+      var RedhawkDomain = function(id) {
         var self = this;
 
         self.getEvents = function() {
@@ -304,6 +361,7 @@ angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifica
         self._update = function(updateData) {
           if(updateData) {
             angular.extend(self, updateData);
+            self._updateFinished();
           }
         };
 
@@ -315,13 +373,14 @@ angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifica
         self._load = function(id) {
           self._restId = id;
 
-          self.events = new RedhawkEventChannel(id);
+          if (!self.events)
+            self.events = new RedhawkEventChannel(self._restId, self, self.on_msg, self.on_connect);
           self.deviceManagers = {};
           self.waveforms = {};
           self.components = {};
           self.devices = {};
 
-          self.$promise = RedhawkREST.domain.info({domainId: self._restId}, function(data){
+          self.$promise = RedhawkREST.domain.info({domainId: self._restId}, function(data) {
             self._update(data);
           }).$promise;
         };
@@ -461,61 +520,14 @@ angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifica
 
         self._load(id);
       };
-  }])
 
-  /**
-   * Creates a listener to all event channels and stores the messages.
-   *
-   * @constructor
-   */
-  .factory('RedhawkEventChannel', ['RedhawkREST', 'RedhawkSocket',
-    function(RedhawkREST, RedhawkSocket) {
-      return function(domainId) {
-        var self = this;
-
-        self.messages = [];
-        self.channels = ['ODM_Channel']; // For now, only supports ODM Channel
-        // FIXME: the ability to getEventChannels -> dom.eventChannels GET does not exist...
-        /*
-        var on_connect = function(){
-          redhawk.getDomain(domainId).getEventChannels().$promise.then(function(channels){
-            angular.forEach(channels, function(chan){
-              if(self.channels.indexOf(chan.id) == -1) {
-                eventMessageSocket.addChannel(chan.id, domainId);
-                self.channels.push(chan.id);
-              }
-            });
-          });
-        };
-        */
-        // For now, connecting to only ODM_Channel
-        var on_connect = function () {
-          // See earlier FIXME above regarding integration with dom.eventChannels
-          angular.forEach(self.channels, function(channel) {
-            eventMessageSocket.addChannel(channel, domainId);
-          });
-        };
-        var on_msg = function(json){
-          self.messages.push(json);
-
-          if(self.messages.length > 500)
-            angular.copy(self.messages.slice(-500), self.messages);
-        };
-        var eventMessageSocket = RedhawkSocket.eventChannel(on_msg, on_connect);
-        eventMessageSocket.socket.addBinaryListener(function(data){
-          console.log("WARNING Event Channel Binary Data!");
-        });
-
-        self.getMessages = function() {
-          return self.messages;
-        };
-        self.getChannelNames = function() {
-          return self.channels;
-        };
-      };
+      // ExternalAPI Methods for extended factories
+      RedhawkDomain.prototype._updateFinished = function () { };
+      RedhawkDomain.prototype.on_connect = undefined;
+      RedhawkDomain.prototype.on_msg = undefined;
+      return RedhawkDomain;
   }])
   
-
   /**
    * Angular-style resource that encapsulates the Waveform interface from the server.
    *
@@ -525,7 +537,7 @@ angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifica
    */
   .factory('RedhawkWaveform', ['Redhawk', 'RedhawkREST', 
     function(Redhawk, RedhawkREST) {
-      return function(id, domainId) {
+      var RedhawkWaveform = function(id, domainId) {
         var self = this;
 
         /**
@@ -534,8 +546,8 @@ angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifica
         self._update = function(updateData) {
           if(updateData) {
             angular.extend(self, updateData);
-
             UtilityFunctions.processPorts(self.ports);
+            self._updateFinished();
           }
         };
 
@@ -544,8 +556,8 @@ angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifica
          */
         self._load = function(id, domainId) {
           self.$promise = RedhawkREST.waveform.query({waveformId: id, domainId: domainId}, function(data){
-            self._update(data);
             self.domainId = domainId;
+            self._update(data);
           }).$promise;
         };
         /**
@@ -621,6 +633,10 @@ angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifica
 
         self._load(id, domainId);
       };
+
+      // ExternalAPI Method for extended factories
+      RedhawkWaveform.prototype._updateFinished = function () { };
+      return RedhawkWaveform;
     }
   ])
 
@@ -634,7 +650,7 @@ angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifica
    */
   .factory('RedhawkComponent', ['RedhawkREST',
     function (RedhawkREST) {
-      return function(id, domainId, waveformId) {
+      var RedhawkComponent = function(id, domainId, waveformId) {
         var self = this;
 
         /**
@@ -643,18 +659,19 @@ angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifica
         self._update = function(updateData) {
           if(updateData) {
             angular.extend(self, updateData);
-
             UtilityFunctions.processPorts(self.ports);
+            self._updateFinished();
           }
         };
+
         /**
          * @see {Domain._load()}
          */
         self._load = function(id, domainId, waveformId) {
           self.$promise = RedhawkREST.component.query({componentId: id, waveformId: waveformId, domainId: domainId}, function(data){
-            self._update(data);
             self.waveform = {id: waveformId};
             self.domainId = domainId;
+            self._update(data);
           }).$promise;
         };
         /**
@@ -675,6 +692,10 @@ angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifica
 
         self._load(id, domainId, waveformId);
       };
+
+      // External API Method for extended factories
+      RedhawkComponent.prototype._updateFinished = function () { };
+      return RedhawkComponent;
   }])  
   
 
@@ -686,24 +707,25 @@ angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifica
    */
   .factory('RedhawkDeviceManager', ['RedhawkREST',
     function (RedhawkREST) {
-      return function(id, domainId) {
+      var RedhawkDeviceManager = function(id, domainId) {
         var self = this;
-
         /**
          * @see {Domain._update()}
          */
         self._update = function(updateData) {
           if(updateData) {
             angular.extend(self, updateData);
+            self._updateFinished();
           }
         };
+
         /**
          * @see {Domain._load()}
          */
         self._load = function(id, domainId) {
           self.$promise = RedhawkREST.deviceManager.query({managerId: id, domainId: domainId}, function(data){
-            self._update(data);
             self.domainId = domainId;
+            self._update(data);
           }).$promise;
         };
         /**
@@ -713,6 +735,10 @@ angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifica
 
         self._load(id, domainId);
       };
+
+      // External API Method for extended factories
+      RedhawkDeviceManager.prototype._updateFinished = function () { };
+      return RedhawkDeviceManager;
   }])
   
   /**
@@ -725,7 +751,7 @@ angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifica
    */
   .factory('RedhawkDevice', ['RedhawkREST',
     function (RedhawkREST) {
-      return function(id, domainId, managerId) {
+      var RedhawkDevice = function(id, domainId, managerId) {
         var self = this;
 
         /**
@@ -735,63 +761,49 @@ angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifica
           if(updateData) {
             angular.extend(self, updateData);
             UtilityFunctions.processPorts(self.ports);
+            self._updateFinished();
           }
         };
+
         /**
          * @see {Domain._load()}
          */
         self._load = function(id, domainId, managerId) {
           self.$promise = RedhawkREST.device.query({deviceId: id, managerId: managerId, domainId: domainId}, 
             function(data){
-              self._update(data);
               self.deviceManager = {id: managerId};
               self.domainId = domainId;
+              self._update(data);
             }
           ).$promise;
         };
         /**
          * @see {Domain._reload()}
          */
-        self._reload = function() {
-          if (!self.$promise.$$state.status) {
-            console.log('Skipping reload call since _load executing');
-            return; // Skip...ongoing query.  
-          }
-          self._load(
-            self.id, 
-            self.domainId,
-            self.deviceManager.id);
-        };
+        self._reload = function() { self._load( self.id, self.domainId, self.deviceManager.id); };
 
-        self.configure = function(properties) {
+        /**
+         * Save Property State method: Configure, Allocate, Deallocate
+         */
+        self._commonSave = function(method, properties) {
           return RedhawkREST.device.save(
               {deviceId: self.id, managerId: self.deviceManager.id, domainId: self.domainId},
-              {method: 'configure', properties: properties},
+              {method: method, properties: properties},
               function(){ self._reload(); }
           );
         };
+        self.configure = function(properties) { return self._commonSave('configure', properties); };
+        self.allocate = function(properties) { return self._commonSave('allocate', properties); };
+        self.deallocate = function(properties) { return self._commonSave('deallocate', properties); };
 
-        self.allocate = function(properties) {
-          return RedhawkREST.device.save(
-              {deviceId: self.id, managerId: self.deviceManager.id, domainId: self.domainId},
-              {method: 'allocate', properties: properties},
-              function(){ self._reload(); }
-          );
-        };
-
-        self.deallocate = function(properties) {
-          return RedhawkREST.device.save(
-              {deviceId: self.id, managerId: self.deviceManager.id, domainId: self.domainId},
-              {method: 'deallocate', properties: properties},
-              function(){ self._reload(); }
-          );
-        };
-
+        /**
+         * FEI Related Methods
+         */
         self._updatePortWithData = function(portData) {
-          // portData is the FEITuner structure w/ an updated allocation ID list and no id-keys filled.
-          // Find the port and remove any invalid allocation ids, then extend to update valid ones.
           angular.forEach(self.ports, function(port) {
             if (port.name == portData.name && port.active_allocation_ids) {
+              // portData is the FEITuner structure w/ an updated allocation ID list and no id-keys filled.
+              // Find the port and remove any invalid allocation ids, then extend to update valid ones.
               var oldIDs = UtilityFunctions.filterOldList(port.active_allocation_ids, portData.active_allocation_ids);
               for (var i=0; i < oldIDs.length; i++) {
                 delete port[oldIDs[i]];
@@ -828,6 +840,10 @@ angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifica
 
         self._load(id, domainId, managerId);
       };
+
+      // External API Method for extended factories
+      RedhawkDevice.prototype._updateFinished = function () { };
+      return RedhawkDevice;
   }])
 
   .factory('RedhawkSocket', ['SubscriptionSocket', 'RedhawkConfig', function(SubscriptionSocket, RedhawkConfig) {

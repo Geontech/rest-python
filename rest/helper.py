@@ -127,12 +127,18 @@ class PortHelper(object):
     @staticmethod
     def format_port(port):
         port_value = {'name': port.name, 'direction': port._direction}
+        portFn = None
         if port._direction == 'Uses':
-            port_value['type'] = port._using.name
-            port_value['namespace'] = port._using.nameSpace
-
-        elif port._direction == 'Provides':
-            port_value['type'] = port._interface.name
-            port_value['namespace'] = port._interface.nameSpace
-            
+			portFn = port._using
+        else:
+            portFn = port._interface
+        
+        version_idx = portFn.repoId.rfind(':')
+        version = portFn.repoId[version_idx:]
+        port_value['repId'] = portFn.repoId
+        port_value['idl'] = {
+            'type': portFn.name,
+            'namespace': portFn.nameSpace,
+            'version': version
+        }
         return port_value

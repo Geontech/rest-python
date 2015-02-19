@@ -31,8 +31,8 @@ angular.module('RedhawkConfig', [])
       return new_uri;
     };
 
-    this.restPath = '/rh/rest';
-    this.wsPath = '/rh/rest';
+    this.restPath = '/redhawk/rest';
+    this.wsPath = '/redhawk/rest';
     this.websocketUrl = getWSBasePath() + this.wsPath;
     this.restUrl = this.restPath;
 
@@ -47,8 +47,8 @@ angular.module('RedhawkConfig', [])
     this.deviceUrl = this.deviceManagerUrl + '/devices/:deviceId';
     this.devicePortsUrl = this.deviceUrl + this.portsUrl;
     this.devicePortUrl = this.deviceUrl + this.portUrl;
-    this.waveformsUrl = this.domainUrl + '/waveforms';
-    this.waveformUrl = this.waveformsUrl + '/:waveformId';
+    this.waveformsUrl = this.domainUrl + '/applications';
+    this.waveformUrl = this.waveformsUrl + '/:applicationId';
     this.componentsUrl = this.waveformUrl + '/components';
     this.componentUrl = this.componentsUrl + '/:componentId';
 
