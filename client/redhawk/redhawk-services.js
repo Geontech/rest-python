@@ -914,9 +914,9 @@ var UtilityFunctions = UtilityFunctions || {
   processPorts : function(ports) {
     var portDataTypeRegex = /^data(.*)$/;
     angular.forEach(ports, function(port) {
-      var matches = portDataTypeRegex.exec(port.type);
+      var matches = portDataTypeRegex.exec(port.idl.type);
       if(matches) {
-        port.canPlot = port.direction == "Uses" && port.namespace == "BULKIO";
+        port.canPlot = port.direction == "Uses" && port.idl.namespace == "BULKIO";
         if(port.canPlot)
           port.plotType = matches[1].toLowerCase();
       } else {
