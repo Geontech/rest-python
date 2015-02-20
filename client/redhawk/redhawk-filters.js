@@ -20,7 +20,7 @@
 /**
  * Filters for REDHAWK
  */
- angular.module('redhawkFilters', [])    
+ angular.module('RedhawkFilters', [])    
   .filter('reverse', function () {
     return function(items) {
       return items.slice().reverse();

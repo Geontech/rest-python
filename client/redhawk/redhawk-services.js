@@ -17,48 +17,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see http://www.gnu.org/licenses/.
  */
-
-// Local utility functions
-var UtilityFunctions = UtilityFunctions || {
-  /**
-   * Adds FrontEnd JS specific data to the port data returned by the server.
-   * NOTE: This is purely for identifying BULKIO Output Ports!!
-   * @param ports
-   */
-  processPorts : function(ports) {
-    var portDataTypeRegex = /^data(.*)$/;
-    angular.forEach(ports, function(port) {
-      var matches = portDataTypeRegex.exec(port.type);
-      if(matches) {
-        port.canPlot = port.direction == "Uses" && port.namespace == "BULKIO";
-        if(port.canPlot)
-          port.plotType = matches[1].toLowerCase();
-      } else {
-        port.canPlot = false;
-      }
-    });
-  },
-
-  // Returns items in oldList not found in newList
-  filterOldList : function(oldList, newList) {
-    var out = [];
-    var unique = true;
-    for (var oldI = 0; oldI < oldList.length; oldI++) {
-      for (var newI = 0; newI < newList.length; newI++) {
-        if (oldList[oldI] == newList[newI]) {
-          unique = false;
-          break;
-        }
-      }
-      if (unique) 
-        out.push(oldList[oldI]);
-      unique = true;
-    }
-    return out;
-  }
-};
-
-angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifications', 'RedhawkConfig', 'RedhawkREST'])
+angular.module('RedhawkServices', ['SubscriptionSocketService', 'RedhawkConfig', 'RedhawkREST'])
   .config(['$httpProvider', function($httpProvider) {
     $httpProvider.defaults.transformResponse.unshift(function(response, headersGetter) {
       var ctype = headersGetter('content-type');
@@ -489,8 +448,7 @@ angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifica
             self.availableWaveforms = [];
             self.availableWaveforms.$promise =
                 RedhawkREST.waveform.status({domainId: self._restId}).$promise.then(function(data){
-                  angular.forEach(data['available'], function(item){
-                    console.log(item['name']);
+                  angular.forEach(data['waveforms'], function(item){
                     this.push(item['name']);
                   },self.availableWaveforms);
 
@@ -868,7 +826,7 @@ angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifica
       if(options.domain)
         url += '/domains/'+options.domain;
       if(options.waveform)
-        url += '/waveforms/'+options.waveform;
+        url += '/applications/'+options.waveform;
       if(options.component)
         url += '/components/'+options.component;
       if(options.port)
@@ -927,7 +885,14 @@ angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifica
 
     return RedhawkSocket;
   }])
-
+  
+  /**
+   * Common controller design pattern is to:
+   * 1) Include `user` and `Redhawk`
+   * 2) $watch(user.domain)
+   * 3) Redhawk.getDomain(user.domain) 
+   * Thus...might as well include this element in the client-side core.
+   */
   .factory('user', ['Redhawk', function(Redhawk){
       var user = {domain: undefined};
 
@@ -937,3 +902,43 @@ angular.module('redhawkServices', ['SubscriptionSocketService', 'redhawkNotifica
       return user;
   }])
 ;
+
+// Local utility functions
+var UtilityFunctions = UtilityFunctions || {
+  /**
+   * Adds FrontEnd JS specific data to the port data returned by the server.
+   * NOTE: This is purely for identifying BULKIO Output Ports!!
+   * @param ports
+   */
+  processPorts : function(ports) {
+    var portDataTypeRegex = /^data(.*)$/;
+    angular.forEach(ports, function(port) {
+      var matches = portDataTypeRegex.exec(port.type);
+      if(matches) {
+        port.canPlot = port.direction == "Uses" && port.namespace == "BULKIO";
+        if(port.canPlot)
+          port.plotType = matches[1].toLowerCase();
+      } else {
+        port.canPlot = false;
+      }
+    });
+  },
+
+  // Returns items in oldList not found in newList
+  filterOldList : function(oldList, newList) {
+    var out = [];
+    var unique = true;
+    for (var oldI = 0; oldI < oldList.length; oldI++) {
+      for (var newI = 0; newI < newList.length; newI++) {
+        if (oldList[oldI] == newList[newI]) {
+          unique = false;
+          break;
+        }
+      }
+      if (unique) 
+        out.push(oldList[oldI]);
+      unique = true;
+    }
+    return out;
+  }
+};
