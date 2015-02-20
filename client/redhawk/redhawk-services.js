@@ -17,7 +17,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see http://www.gnu.org/licenses/.
  */
-angular.module('RedhawkServices', ['SubscriptionSocketService', 'RedhawkConfig', 'RedhawkREST'])
+angular.module('RedhawkServices', ['SubscriptionSocketService', 'RedhawkNotifications', 'RedhawkConfig', 'RedhawkREST'])
   .config(['$httpProvider', function($httpProvider) {
     $httpProvider.defaults.transformResponse.unshift(function(response, headersGetter) {
       var ctype = headersGetter('content-type');
@@ -303,10 +303,11 @@ angular.module('RedhawkServices', ['SubscriptionSocketService', 'RedhawkConfig',
    * @constructor
    */
   .factory('RedhawkDomain', 
-           ['$injector', 'RedhawkREST', 'RedhawkDeviceManager', 'RedhawkDevice', 'RedhawkWaveform', 'RedhawkComponent', 'RedhawkEventChannel',
-    function($injector,   RedhawkREST,   RedhawkDeviceManager,   RedhawkDevice,   RedhawkWaveform,   RedhawkComponent,   RedhawkEventChannel) {
+           ['$injector', 'RedhawkNotificationService', 'RedhawkREST', 'RedhawkDeviceManager', 'RedhawkDevice', 'RedhawkWaveform', 'RedhawkComponent', 'RedhawkEventChannel',
+    function($injector,   RedhawkNotificationService,   RedhawkREST,   RedhawkDeviceManager,   RedhawkDevice,   RedhawkWaveform,   RedhawkComponent,   RedhawkEventChannel) {
       var RedhawkDomain = function(id) {
         var self = this;
+        var notify = RedhawkNotificationService;
 
         self.getEvents = function() {
           return self.events;
@@ -494,10 +495,11 @@ angular.module('RedhawkServices', ['SubscriptionSocketService', 'RedhawkConfig',
    * @param domainId
    * @constructor
    */
-  .factory('RedhawkWaveform', ['Redhawk', 'RedhawkREST', 
-    function(Redhawk, RedhawkREST) {
+  .factory('RedhawkWaveform', ['Redhawk', 'RedhawkREST', 'RedhawkNotificationService',
+    function(Redhawk, RedhawkREST, RedhawkNotificationService) {
       var RedhawkWaveform = function(id, domainId) {
         var self = this;
+        var notify = RedhawkNotificationService;
 
         /**
          * @see {Domain._update()}
