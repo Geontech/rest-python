@@ -17,8 +17,8 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see http://www.gnu.org/licenses/.
  */
- angular.module('redhawkSigplot', [
-    'redhawkServices', 
+ angular.module('RedhawkSigplot', [
+    'RedhawkServices', 
     'ngRoute'
   ])
   .controller('SigPlot', ['$scope', '$routeParams', 'RedhawkSocket', 'user',
