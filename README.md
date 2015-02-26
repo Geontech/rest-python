@@ -2,7 +2,9 @@
 
 ## Description
 
-Contains the REDHAWK python implementation of the generic REST API
+Contains the REDHAWK python implementation of the generic REST API.
+
+Please visit [the Wiki](https://github.com/Geontech/rest-python/wiki) for more detailed instructions on the changes made to this repository and how it can be used for UI development.
 
 ## REDHAWK Documentation
 
