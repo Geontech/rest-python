@@ -70,6 +70,7 @@ class FEITunerHandler(JsonHandler, FEIHelper):
 
             if port._direction == 'Provides':
                 if allocation_id:
+                    allocation_id = str(allocation_id)
                     info[allocation_id] = self.get_attribute(port, allocation_id, attribute_name) or {}
                 else:
                     for alloc_id in allocations:
