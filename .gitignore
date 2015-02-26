@@ -1,4 +1,4 @@
 *.pyc
 apps/*
 .virtualenv/
-*pyc
+bower_components

@@ -18,7 +18,7 @@ details.
 You should have received a copy of the GNU Lesser General Public License along
 with this program.  If not, see http://www.gnu.org/licenses/.
 -->
-<html lang="en" ng-app="TOP_LEVEL_MODULE_NAME">
+<html lang="en">
   <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -30,10 +30,12 @@ with this program.  If not, see http://www.gnu.org/licenses/.
     <script src="bower_components/jQuery/dist/jquery.js"></script>
     <script src="bower_components/bootstrap-css/js/bootstrap.min.js"></script>
     <script src="bower_components/angular/angular.js"></script>
+    <script src="bower_components/angular-animate/angular-animate.min.js"></script>
+    <script src="bower_components/angular-bootstrap/ui-bootstrap-tpls.js"></script>
     <script src="bower_components/angular-recursion/angular-recursion.js"></script>
     <script src="bower_components/angular-route/angular-route.js"></script>
     <script src="bower_components/angular-resource/angular-resource.js"></script>
-    <script src="bower_components/angular-toastr/dist/angular-toastr.js"></script>
+    <script src="bower_components/angular-toastr/dist/angular-toastr.min.js"></script>
 
     <!-- Core rest-python AngularJS components, services and sigplot -->
     <script src="/client/redhawk/redhawk-config/redhawk-config-service.js"></script>
@@ -62,22 +64,14 @@ with this program.  If not, see http://www.gnu.org/licenses/.
     -->
 
   </head>
-  <!-- By naming convention, controller name in AngularJS module should be
-       top-level-controller -->
-  <body ng-controller="TopLevelController">
+  <body ng-app="ExampleApp">
 
-    <div class="container" redhawk-notification>
-
-      <!-- 
-      ng-view for Angular.JS to populate 
-      As seen in admin-console, ng-if="user.domain" maps to the
-      TopLevelController's $scope.user.domain variable.
-      -->
-      <div id="view" ng-if="user.domain" ng-view></div>
-
-    </div>
-    <div class="container">
-      <div id="footer"></div>
+    <!-- 
+    ng-view for Angular.JS to populate 
+    As seen in admin-console, ng-if="user.domain" maps to the
+    TopLevelController's $scope.user.domain variable.
+    -->
+    <div id="view" ng-view>
     </div>
 
   </body>
