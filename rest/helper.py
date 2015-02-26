@@ -53,29 +53,28 @@ class PropertyHelper(object):
     def _property_set(properties):
         prop_dict = []
         for prop in properties:
-            if prop.type != 'struct' and prop.type != 'structSeq':
-                if isinstance(prop.queryValue(), list):
-                    prop_type = "simpleSeq"
+            if prop.type not in ['struct', 'structSeq']:
+                if prop.type == 'sequence':
+                    prop_type = 'simpleSeq' # FIXME: Maybe don't rename??
                 else:
                     prop_type = 'simple'
             else:
                 prop_type = prop.type
 
+            # BugFix: write-only props cannot be queried, here's a way to feed
+            # a non-destructive value in place.
+            val = None if 'writeonly' == prop.mode else prop.queryValue()
             prop_json = {
                 'id': prop.id,
                 'name': prop.clean_name,
-                'value': prop.queryValue(),
+                'value': val,
                 'scaType': prop_type,
                 'mode': prop.mode,
                 'kinds': prop.kinds
             }
 
             if prop_type == 'simple':
-                prop_json['type'] = type(prop.queryValue()).__name__
-                if prop_json['type'] == 'str':
-                    prop_json['type'] = 'string'
-                elif prop_json['type'] == 'bool':
-                    prop_json['type'] = 'boolean'
+                prop_json['type'] = prop.type;
 
             if '_enums' in dir(prop) and prop._enums:
                 prop_json['enumerations'] = prop._enums
