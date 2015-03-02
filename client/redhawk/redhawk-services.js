@@ -526,21 +526,6 @@ angular.module('RedhawkServices', ['SubscriptionSocketService', 'RedhawkNotifica
          */
         self._reload = function() {
           self._load(self.id, self.domainId);
-          self.$promise.then(function(wf){
-            angular.forEach(wf.components,
-              function(comp){
-                var obj = Redhawk.getDomain(self.domainId).getComponent(comp.id, self.id);
-                // Calling obj after the fact to make the obj has been intiated
-                obj.$promise.then(
-                  function(){
-                    // calling the parent ref instead of the function param since the
-                    // promise resolves to the rest data not the obj.
-                    obj._reload();
-                  }
-                );
-              }
-            )
-          });
         };
 
         /**
