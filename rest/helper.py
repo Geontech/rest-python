@@ -63,7 +63,7 @@ class PropertyHelper(object):
 
             # BugFix: write-only props cannot be queried, here's a way to feed
             # a non-destructive value in place.
-            val = None if 'writeonly' == prop.mode else prop.queryValue()
+            val = None if ('writeonly' == prop.mode or 'message' in prop.kinds) else prop.queryValue()
             prop_json = {
                 'id': prop.id,
                 'name': prop.clean_name,
