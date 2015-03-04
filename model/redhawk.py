@@ -30,6 +30,8 @@ from domain import Domain, scan_domains, ResourceNotFound
 
 from tornado.websocket import WebSocketClosedError
 
+import collections
+
 
 class Redhawk(object):
     __domains = None
@@ -131,10 +133,36 @@ class Redhawk(object):
         return dom.release(app_id)
 
     ##############################
+    # COMMON PROPERTIES
+    @staticmethod
+    def _clean_property(property):
+        if isinstance(property, basestring):
+            return str(property)
+        elif isinstance(property, collections.Mapping):
+            return dict(map(Redhawk._clean_property, property.iteritems()))
+        elif isinstance(property, collections.Iterable):
+            return type(property)(map(Redhawk._clean_property, property))
+        else:
+            return property
+
+    @staticmethod
+    def _get_prop_changes(current_props, new_properties):
+        changes = {}
+        for prop in current_props:
+            if prop.id in new_properties:
+                if new_properties[prop.id] != prop.queryValue():
+                    changes[prop.id] = (type(prop.queryValue())) (Redhawk._clean_property(new_properties[prop.id]))
+        return changes
+
+    ##############################
     # COMPONENT
 
     @background_task
     def get_component(self, domain_name, app_id, comp_id):
+        dom = self._get_domain(domain_name)
+        return dom.find_component(app_id, comp_id)
+
+    def _get_component(self, domain_name, app_id, comp_id):
         dom = self._get_domain(domain_name)
         return dom.find_component(app_id, comp_id)
 
@@ -145,16 +173,9 @@ class Redhawk(object):
 
     @background_task
     def component_configure(self, domain_name, app_id, comp_id, new_properties):
-        dom = self._get_domain(domain_name)
-        comp = dom.find_component(app_id, comp_id)
-
-        configure_changes = {}
-        for prop in comp._properties:
-            if prop.id in new_properties:
-                if new_properties[prop.id] != prop.queryValue():
-                    configure_changes[prop.id] = (type(prop.queryValue()))(new_properties[prop.id])
-
-        return comp.configure(configure_changes)
+        comp = self._get_component(domain_name, app_id, comp_id)
+        changes = Redhawk._get_prop_changes(comp._properties, new_properties)
+        return comp.configure(changes)
 
     ##############################
     # DEVICE MANAGER
@@ -186,30 +207,22 @@ class Redhawk(object):
         dom = self._get_domain(domain_name)
         return dom.find_device(device_manager_id, device_id)
 
-    def _get_prop_changes(self, current_props, new_properties):
-        changes = {}
-        for prop in current_props:
-            if prop.id in new_properties:
-                if new_properties[prop.id] != prop.queryValue():
-                    changes[prop.id] = (type(prop.queryValue()))(new_properties[prop.id])
-        return changes
-
     @background_task
     def device_configure(self, domain_name, device_manager_id, device_id, new_properties):
         dev = self._get_device(domain_name, device_manager_id, device_id)
-        changes = self._get_prop_changes(dev._properties, new_properties)
+        changes = Redhawk._get_prop_changes(dev._properties, new_properties)
         return dev.configure(changes)
 
     @background_task
     def device_allocate(self, domain_name, device_manager_id, device_id, new_properties):
         dev = self._get_device(domain_name, device_manager_id, device_id)
-        changes = self._get_prop_changes(dev._properties, new_properties)
+        changes = Redhawk._get_prop_changes(dev._properties, new_properties)
         return dev.allocateCapacity(changes)
 
     @background_task
     def device_deallocate(self, domain_name, device_manager_id, device_id, new_properties):
         dev = self._get_device(domain_name, device_manager_id, device_id)
-        changes = self._get_prop_changes(dev._properties, new_properties)
+        changes = Redhawk._get_prop_changes(dev._properties, new_properties)
         return dev.deallocateCapacity(changes)
 
     ##############################
