@@ -594,8 +594,8 @@ angular.module('RedhawkServices', ['SubscriptionSocketService', 'RedhawkNotifica
    * @param applicationId
    * @constructor
    */
-  .factory('RedhawkComponent', ['RedhawkREST',
-    function (RedhawkREST) {
+  .factory('RedhawkComponent', ['RedhawkREST', '$timeout',
+    function (RedhawkREST, $timeout) {
       var RedhawkComponent = function(id, domainId, applicationId) {
         var self = this;
 
@@ -632,7 +632,7 @@ angular.module('RedhawkServices', ['SubscriptionSocketService', 'RedhawkNotifica
           return RedhawkREST.component.configure(
               {componentId: self.id, applicationId: self.waveform.id, domainId: self.domainId},
               {properties: properties},
-              function(){ self._reload(); }
+              function(){ $timeout(self._reload, 1000); }
           );
         };
 
@@ -695,8 +695,8 @@ angular.module('RedhawkServices', ['SubscriptionSocketService', 'RedhawkNotifica
    * @param managerId
    * @constructor
    */
-  .factory('RedhawkDevice', ['RedhawkREST',
-    function (RedhawkREST) {
+  .factory('RedhawkDevice', ['RedhawkREST', '$timeout',
+    function (RedhawkREST, $timeout) {
       var RedhawkDevice = function(id, domainId, managerId) {
         var self = this;
 
@@ -735,7 +735,7 @@ angular.module('RedhawkServices', ['SubscriptionSocketService', 'RedhawkNotifica
           return RedhawkREST.device.save(
               {deviceId: self.id, managerId: self.deviceManager.id, domainId: self.domainId},
               {method: method, properties: properties},
-              function(){ self._reload(); }
+              function(){ $timeout(self._reload, 1000); }
           );
         };
         self.configure = function(properties) { return self._commonSave('configure', properties); };
