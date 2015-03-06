@@ -104,6 +104,11 @@ class Redhawk(object):
         dom = self._get_domain(domain_name)
         return dom.properties()
 
+    @background_task
+    def get_domain_event_channels(self, domain_name):
+        dom = self._get_domain(domain_name)
+        return dom.event_channels();
+
     ##############################
     # APPLICATION
 

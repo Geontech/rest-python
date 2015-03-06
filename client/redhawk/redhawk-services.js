@@ -244,35 +244,26 @@ angular.module('RedhawkServices', ['SubscriptionSocketService', 'RedhawkNotifica
    *
    * @constructor
    */
-  .factory('RedhawkEventChannel', ['RedhawkREST', 'RedhawkSocket',
-    function(RedhawkREST, RedhawkSocket) {
+  .factory('RedhawkEventChannel', ['Redhawk', 'RedhawkSocket',
+    function(Redhawk, RedhawkSocket) {
       return function(domainId, parent, parent_on_msg, parent_on_connect) {
         var self = this;
 
         self.messages = [];
-        self.channels = ['ODM_Channel']; // For now, only supports ODM Channel
-        // FIXME: the ability to getEventChannels -> dom.eventChannels GET does not exist...
-        /*
+        self.channels = [];
         var on_connect = function(){
-          redhawk.getDomain(domainId).getEventChannels().$promise.then(function(channels){
-            angular.forEach(channels, function(chan){
-              if(self.channels.indexOf(chan.id) == -1) {
-                eventMessageSocket.addChannel(chan.id, domainId);
-                self.channels.push(chan.id);
+          Redhawk.getDomain(domainId).getEventChannels().$promise.then(function(result){
+            angular.forEach(result.eventChannels, function(chan){
+              if(self.channels.indexOf(chan) == -1) {
+                eventMessageSocket.addChannel(chan, domainId);
+                self.channels.push(chan);
               }
             });
+            if (parent_on_connect)
+              parent_on_connect(self);
           });
         };
-        */
-        // For now, connecting to only ODM_Channel
-        var on_connect = function () {
-          // See earlier FIXME above regarding integration with dom.eventChannels
-          angular.forEach(self.channels, function(channel) {
-            eventMessageSocket.addChannel(channel, domainId);
-          });
-          if (parent_on_connect)
-            parent_on_connect(self);
-        };
+
         var on_msg = function(json){
           self.messages.push(json);
 
@@ -809,13 +800,17 @@ angular.module('RedhawkServices', ['SubscriptionSocketService', 'RedhawkNotifica
       var portSocket = SubscriptionSocket.createNew();
 
       var url = RedhawkConfig.websocketUrl;
-
+      // FIXME: Map these paths through redhawk-config-service to consolidate them with definitions.
       if(options.domain)
         url += '/domains/'+options.domain;
       if(options.waveform)
         url += '/applications/'+options.waveform;
       if(options.component)
         url += '/components/'+options.component;
+      if(options.deviceManager)
+        url += '/deviceManagers/'+options.deviceManager;
+      if(options.device)
+        url += '/devices/'+options.device;
       if(options.port)
         url += '/ports/'+options.port;
 

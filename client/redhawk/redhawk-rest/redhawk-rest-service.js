@@ -24,8 +24,7 @@ angular.module('RedhawkREST', ['ngResource', 'RedhawkConfig'])
       add:          {method: 'POST'},
       info:         {method: 'GET', url: RedhawkConfig.domainUrl, cache:false},
       configure:    {method: 'PUT', url: RedhawkConfig.domainUrl + '/configure'},
-      // FIXME: This path does not exist in the server handler list or handler logic.
-      events:       {method: 'GET', url: RedhawkConfig.domainUrl + '/eventChannels', isArray:true, cache:false}
+      events:       {method: 'GET', url: RedhawkConfig.domainUrl + '/eventChannels', cache:false}
     });
     this.fileSystem = $resource(RedhawkConfig.domainUrl + '/fs/:path', {}, {
       query:        {method: 'GET', cache:false}
