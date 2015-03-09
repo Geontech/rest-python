@@ -262,12 +262,9 @@ angular.module('RedhawkServices', ['SubscriptionSocketService', 'RedhawkNotifica
         self.messages = [];
         self.channels = [];
         var on_connect = function(){
-          domain.getEventChannels().$promise.then(function(result){
-            angular.forEach(result.eventChannels, function(chan){
-              if(self.channels.indexOf(chan) == -1) {
-                eventMessageSocket.addChannel(chan, domain._restId);
-                self.channels.push(chan);
-              }
+          domain.getEventChannels().$promise.then(function(result) {
+            angular.forEach(result.eventChannels, function(chan) {
+              self.addChannel(chan);
             });
             if (parent_on_connect)
               parent_on_connect(self);
@@ -287,6 +284,21 @@ angular.module('RedhawkServices', ['SubscriptionSocketService', 'RedhawkNotifica
         eventMessageSocket.socket.addBinaryListener(function(data){
           console.log("WARNING Event Channel Binary Data!");
         });
+
+        self.addChannel = function(channel) {
+          if (-1 == self.channels.indexOf(channel)) {
+            eventMessageSocket.addChannel(channel, domain._restId);
+            self.channels.push(channel);
+          }
+        }
+
+        self.removeChannel = function(channel) {
+          var chanIdx = self.channels.indexOf(channel)
+          if (-1 < chanIdx) {
+            eventMessageSocket.removeChannel(channel, domain._restId);
+            self.channels.splice(chanIdx, 1);
+          }
+        }
 
         self.getMessages = function() {
           return self.messages;
