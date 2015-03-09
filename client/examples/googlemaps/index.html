@@ -1,0 +1,70 @@
+<!doctype html>
+<!--
+This file is protected by Copyright. Please refer to the COPYRIGHT file
+distributed with this source distribution.
+
+This file is part of REDHAWK rest-python.
+
+REDHAWK rest-python is free software: you can redistribute it and/or modify it under
+the terms of the GNU Lesser General Public License as published by the Free
+Software Foundation, either version 3 of the License, or (at your option) any
+later version.
+
+REDHAWK rest-python is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more
+details.
+
+You should have received a copy of the GNU Lesser General Public License along
+with this program.  If not, see http://www.gnu.org/licenses/.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" type="image/png" href="images/favicon.ico"/>
+
+    <title>Rest-Python Google Map demo</title>
+
+    <!-- build:js lib/vendor.js -->
+    <script src="bower_components/jQuery/dist/jquery.js"></script>
+    <script src="bower_components/highlightjs/highlight.pack.js"></script>
+    <script src="bower_components/bootstrap-css/js/bootstrap.min.js"></script>
+    <script src="bower_components/angular/angular.js"></script>
+    <script src="bower_components/angular-animate/angular-animate.min.js"></script>
+    <script src="bower_components/angular-bootstrap/ui-bootstrap-tpls.js"></script>
+    <script src="bower_components/angular-recursion/angular-recursion.js"></script>
+    <script src="bower_components/angular-route/angular-route.js"></script>
+    <script src="bower_components/angular-resource/angular-resource.js"></script>
+    <script src="bower_components/angular-toastr/dist/angular-toastr.min.js"></script>
+    <script src="bower_components/lodash/dist/lodash.min.js"></script>
+    <script src="bower_components/angular-google-maps/dist/angular-google-maps.min.js"></script>
+    <!-- endbuild -->
+
+    <!-- build:js js/app.js -->
+    <script src="/client/redhawk/redhawk-config/redhawk-config-service.js"></script>
+    <script src="/client/redhawk/redhawk-notifications/redhawk-notifications.js"></script>
+    <script src="/client/redhawk/redhawk-rest/redhawk-rest-service.js"></script>
+    <script src="/client/redhawk/redhawk-services.js"></script>
+    <script src="/client/subscription-socket/subscription-socket-service.js"></script>
+
+    <!-- The rest-python Google Map demo app. -->
+    <script src="js/app.js"></script>
+    <link rel="stylesheet" href="css/site.css">
+    <!-- endbuild -->
+
+    <!-- build:css lib/vendor.css -->
+    <link rel="stylesheet" href="bower_components/bootstrap-css/css/bootstrap.css">
+    <link rel="stylesheet" href="bower_components/angular-toastr/dist/angular-toastr.min.css">
+    <link rel="stylesheet" href="bower_components/font-awesome/css/font-awesome.css">
+    <!-- endbuild -->
+  </head>
+  <body ng-app="gMapApp">
+
+    <!-- AngularJS takes care of populating this using $ngRoutes and controllers -->
+    <div id="view" ng-view>
+    </div>
+
+  </body>
+</html>
