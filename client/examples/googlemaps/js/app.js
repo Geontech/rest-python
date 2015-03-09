@@ -94,6 +94,7 @@ angular.module('gMapApp', [
             function(manager) {
               $scope.processDeviceManager(manager.id); 
             });
+          oneshot = false;
         }
       });
 
