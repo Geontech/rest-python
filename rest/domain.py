@@ -33,20 +33,25 @@ from helper import PropertyHelper
 
 class DomainInfo(JsonHandler, PropertyHelper):
     @gen.coroutine
-    def get(self, domain_name=None):
+    def get(self, domain_name=None, *args):
         if domain_name:
-            dom_info = yield self.redhawk.get_domain_info(domain_name)
-            properties = yield self.redhawk.get_domain_properties(domain_name)
-            apps = yield self.redhawk.get_application_list(domain_name)
-            device_managers = yield self.redhawk.get_device_manager_list(domain_name)
+            event_channels = yield self.redhawk.get_domain_event_channels(domain_name)
+            if not args:
+                dom_info = yield self.redhawk.get_domain_info(domain_name)
+                properties = yield self.redhawk.get_domain_properties(domain_name)
+                apps = yield self.redhawk.get_application_list(domain_name)
+                device_managers = yield self.redhawk.get_device_manager_list(domain_name)
 
-            info = {
-                'id': dom_info._get_identifier(),
-                'name': dom_info.name,
-                'properties': self.format_properties(properties),
-                'applications': apps,
-                'deviceManagers': device_managers
-            }
+                info = {
+                    'id': dom_info._get_identifier(),
+                    'name': dom_info.name,
+                    'properties': self.format_properties(properties),
+                    'eventChannels': event_channels,
+                    'applications': apps,
+                    'deviceManagers': device_managers
+                }
+            elif 'eventChannels' == args[0]:
+                info = {'eventChannels': event_channels}
 
         else:
             domains = yield self.redhawk.get_domain_list()

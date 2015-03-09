@@ -29,9 +29,16 @@ angular.module('RedhawkServices', ['SubscriptionSocketService', 'RedhawkNotifica
       }
     });
   }])
+  .constant('DefaultFactoryNames', {
+    DOMAIN:         'RedhawkDomain',
+    DEVICEMANAGER:  'RedhawkDeviceManager',
+    DEVICE:         'RedhawkDevice',
+    WAVEFORM:       'RedhawkWaveform',
+    COMPONENT:      'RedhawkComponent'
+  })
   /* Singleton REDHAWK Service for returning Domain factories */
-  .service('Redhawk', ['$injector', 'RedhawkREST',
-    function($injector, RedhawkREST){
+  .service('Redhawk', ['$injector', 'RedhawkREST', 'DefaultFactoryNames',
+    function($injector, RedhawkREST, DefaultFactoryNames){
       /**
        *
        * Factory Object returned to the injector. Used to store {Domain} objects.
@@ -78,11 +85,14 @@ angular.module('RedhawkServices', ['SubscriptionSocketService', 'RedhawkNotifica
        * @returns {Domain}
        */
       redhawk.getDomain = function(id, factoryName){
-        var RedhawkDomainConstructor = (factoryName) ? $injector.get(factoryName) : $injector.get('RedhawkDomain');
+        var storeId = id + ((factoryName) ? factoryName : DefaultFactoryNames.DOMAIN);
 
-        if(!redhawk.__domains[id])
-          redhawk.__domains[id] = new RedhawkDomainConstructor(id);
-        return redhawk.__domains[id];
+        if(!redhawk.__domains[storeId]) {
+          var constructor = (factoryName) ? $injector.get(factoryName) : $injector.get(DefaultFactoryNames.DOMAIN);
+          redhawk.__domains[storeId] = new constructor(id);
+        }
+
+        return redhawk.__domains[storeId];
       };
 
       // FIXME: Whatever JSON someone was expecting to receive, they did not implement the push
@@ -244,35 +254,23 @@ angular.module('RedhawkServices', ['SubscriptionSocketService', 'RedhawkNotifica
    *
    * @constructor
    */
-  .factory('RedhawkEventChannel', ['RedhawkREST', 'RedhawkSocket',
-    function(RedhawkREST, RedhawkSocket) {
-      return function(domainId, parent, parent_on_msg, parent_on_connect) {
+  .factory('RedhawkEventChannel', ['RedhawkSocket',
+    function(RedhawkSocket) {
+      return function(domain, parent_on_msg, parent_on_connect) {
         var self = this;
 
         self.messages = [];
-        self.channels = ['ODM_Channel']; // For now, only supports ODM Channel
-        // FIXME: the ability to getEventChannels -> dom.eventChannels GET does not exist...
-        /*
+        self.channels = [];
         var on_connect = function(){
-          redhawk.getDomain(domainId).getEventChannels().$promise.then(function(channels){
-            angular.forEach(channels, function(chan){
-              if(self.channels.indexOf(chan.id) == -1) {
-                eventMessageSocket.addChannel(chan.id, domainId);
-                self.channels.push(chan.id);
-              }
+          domain.getEventChannels().$promise.then(function(result) {
+            angular.forEach(result.eventChannels, function(chan) {
+              self.addChannel(chan);
             });
+            if (parent_on_connect)
+              parent_on_connect(self);
           });
         };
-        */
-        // For now, connecting to only ODM_Channel
-        var on_connect = function () {
-          // See earlier FIXME above regarding integration with dom.eventChannels
-          angular.forEach(self.channels, function(channel) {
-            eventMessageSocket.addChannel(channel, domainId);
-          });
-          if (parent_on_connect)
-            parent_on_connect(self);
-        };
+
         var on_msg = function(json){
           self.messages.push(json);
 
@@ -280,12 +278,27 @@ angular.module('RedhawkServices', ['SubscriptionSocketService', 'RedhawkNotifica
             angular.copy(self.messages.slice(-500), self.messages);
 
           if (parent_on_msg)
-            parent_on_msg.call(parent, json);
+            parent_on_msg.call(domain, json);
         };
         var eventMessageSocket = RedhawkSocket.eventChannel(on_msg, on_connect);
         eventMessageSocket.socket.addBinaryListener(function(data){
           console.log("WARNING Event Channel Binary Data!");
         });
+
+        self.addChannel = function(channel) {
+          if (-1 == self.channels.indexOf(channel)) {
+            eventMessageSocket.addChannel(channel, domain._restId);
+            self.channels.push(channel);
+          }
+        }
+
+        self.removeChannel = function(channel) {
+          var chanIdx = self.channels.indexOf(channel)
+          if (-1 < chanIdx) {
+            eventMessageSocket.removeChannel(channel, domain._restId);
+            self.channels.splice(chanIdx, 1);
+          }
+        }
 
         self.getMessages = function() {
           return self.messages;
@@ -303,8 +316,8 @@ angular.module('RedhawkServices', ['SubscriptionSocketService', 'RedhawkNotifica
    * @constructor
    */
   .factory('RedhawkDomain', 
-           ['$injector', 'RedhawkNotificationService', 'RedhawkREST', 'RedhawkDeviceManager', 'RedhawkDevice', 'RedhawkWaveform', 'RedhawkComponent', 'RedhawkEventChannel',
-    function($injector,   RedhawkNotificationService,   RedhawkREST,   RedhawkDeviceManager,   RedhawkDevice,   RedhawkWaveform,   RedhawkComponent,   RedhawkEventChannel) {
+           ['$injector', 'RedhawkNotificationService', 'RedhawkREST', 'RedhawkDeviceManager', 'RedhawkDevice', 'RedhawkWaveform', 'RedhawkComponent', 'RedhawkEventChannel', 'DefaultFactoryNames',
+    function($injector,   RedhawkNotificationService,   RedhawkREST,   RedhawkDeviceManager,   RedhawkDevice,   RedhawkWaveform,   RedhawkComponent,   RedhawkEventChannel, DefaultFactoryNames) {
       var RedhawkDomain = function(id) {
         var self = this;
         var notify = RedhawkNotificationService;
@@ -334,7 +347,7 @@ angular.module('RedhawkServices', ['SubscriptionSocketService', 'RedhawkNotifica
           self._restId = id;
 
           if (!self.events)
-            self.events = new RedhawkEventChannel(self._restId, self, self.on_msg, self.on_connect);
+            self.events = new RedhawkEventChannel(self, self.on_msg, self.on_connect);
           self.deviceManagers = {};
           self.waveforms = {};
           self.components = {};
@@ -385,13 +398,14 @@ angular.module('RedhawkServices', ['SubscriptionSocketService', 'RedhawkNotifica
          * @param factoryName
          * @returns {*}
          */
-        self.getDevice = function(id, deviceManagerId, factoryName){
-          if(!self.devices[id]){
+        self.getDevice = function(id, deviceManagerId, factoryName) {
+          var storeId = id + ((factoryName) ? factoryName : DefaultFactoryNames.DEVICE);
+          if(!self.devices[storeId]){
             var constructor = (factoryName) ? $injector.get(factoryName) : RedhawkDevice;
-            self.devices[id] = new constructor(id, self._restId, deviceManagerId);
+            self.devices[storeId] = new constructor(id, self._restId, deviceManagerId);
           }
 
-          return self.devices[id];
+          return self.devices[storeId];
         };
 
         /**
@@ -401,12 +415,12 @@ angular.module('RedhawkServices', ['SubscriptionSocketService', 'RedhawkNotifica
          * @returns {*}
          */
         self.getDeviceManager = function(id, factoryName) {
-          if(!self.deviceManagers[id]) {
+          var storeId = id + ((factoryName) ? factoryName : DefaultFactoryNames.DEVICEMANAGER);
+          if(!self.deviceManagers[storeId]) {
             var constructor = (factoryName) ? $injector.get(factoryName) : RedhawkDeviceManager;
-            self.deviceManagers[id] = new constructor(id, self._restId);
+            self.deviceManagers[storeId] = new constructor(id, self._restId);
           }
-
-          return self.deviceManagers[id];
+          return self.deviceManagers[storeId];
         };
         
         /**
@@ -416,13 +430,14 @@ angular.module('RedhawkServices', ['SubscriptionSocketService', 'RedhawkNotifica
          * @param factoryName
          * @returns {*}
          */
-        self.getComponent = function(id, applicationId, factoryName){
-          if(!self.components[id]) {
+        self.getComponent = function(id, applicationId, factoryName) {
+          var storeId = id + ((factoryName) ? factoryName : DefaultFactoryNames.COMPONENT);
+          if(!self.components[storeId]) {
             var constructor = (factoryName) ? $injector.get(factoryName) : RedhawkComponent;
-            self.components[id] = new constructor(id, self._restId, applicationId);
+            self.components[storeId] = new constructor(id, self._restId, applicationId);
           }
 
-          return self.components[id];
+          return self.components[storeId];
         };
 
         /**
@@ -432,12 +447,13 @@ angular.module('RedhawkServices', ['SubscriptionSocketService', 'RedhawkNotifica
          * @returns {*}
          */
         self.getWaveform = function(id, factoryName){
-          if(!self.waveforms[id]) {
+          var storeId = id + ((factoryName) ? factoryName : DefaultFactoryNames.WAVEFORM);
+          if(!self.waveforms[storeId]) {
             var constructor = (factoryName) ? $injector.get(factoryName) : RedhawkWaveform;
-            self.waveforms[id] = new constructor(id, self._restId);
+            self.waveforms[storeId] = new constructor(id, self._restId);
           }
 
-          return self.waveforms[id];
+          return self.waveforms[storeId];
         };
 
         /**
@@ -594,8 +610,8 @@ angular.module('RedhawkServices', ['SubscriptionSocketService', 'RedhawkNotifica
    * @param applicationId
    * @constructor
    */
-  .factory('RedhawkComponent', ['RedhawkREST',
-    function (RedhawkREST) {
+  .factory('RedhawkComponent', ['RedhawkREST', '$timeout',
+    function (RedhawkREST, $timeout) {
       var RedhawkComponent = function(id, domainId, applicationId) {
         var self = this;
 
@@ -632,7 +648,7 @@ angular.module('RedhawkServices', ['SubscriptionSocketService', 'RedhawkNotifica
           return RedhawkREST.component.configure(
               {componentId: self.id, applicationId: self.waveform.id, domainId: self.domainId},
               {properties: properties},
-              function(){ self._reload(); }
+              function(){ $timeout(self._reload, 1000); }
           );
         };
 
@@ -695,8 +711,8 @@ angular.module('RedhawkServices', ['SubscriptionSocketService', 'RedhawkNotifica
    * @param managerId
    * @constructor
    */
-  .factory('RedhawkDevice', ['RedhawkREST',
-    function (RedhawkREST) {
+  .factory('RedhawkDevice', ['RedhawkREST', '$timeout',
+    function (RedhawkREST, $timeout) {
       var RedhawkDevice = function(id, domainId, managerId) {
         var self = this;
 
@@ -735,7 +751,7 @@ angular.module('RedhawkServices', ['SubscriptionSocketService', 'RedhawkNotifica
           return RedhawkREST.device.save(
               {deviceId: self.id, managerId: self.deviceManager.id, domainId: self.domainId},
               {method: method, properties: properties},
-              function(){ self._reload(); }
+              function(){ $timeout(self._reload, 1000); }
           );
         };
         self.configure = function(properties) { return self._commonSave('configure', properties); };
@@ -809,13 +825,17 @@ angular.module('RedhawkServices', ['SubscriptionSocketService', 'RedhawkNotifica
       var portSocket = SubscriptionSocket.createNew();
 
       var url = RedhawkConfig.websocketUrl;
-
+      // FIXME: Map these paths through redhawk-config-service to consolidate them with definitions.
       if(options.domain)
         url += '/domains/'+options.domain;
       if(options.waveform)
         url += '/applications/'+options.waveform;
       if(options.component)
         url += '/components/'+options.component;
+      if(options.deviceManager)
+        url += '/deviceManagers/'+options.deviceManager;
+      if(options.device)
+        url += '/devices/'+options.device;
       if(options.port)
         url += '/ports/'+options.port;
 

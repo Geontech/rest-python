@@ -22,20 +22,19 @@ REDHAWK Helper class used by the Server Handlers
 """
 
 import logging
+from ossie.cf import StandardEvent  # For the EventHelper
 from ossie.utils import redhawk
-from ossie.utils.redhawk.channels import ODMListener
+from ossie.events import GenericEventConsumer
 import traceback
+
+from tornado.websocket import WebSocketClosedError
+
+from functools import partial
+import uuid
 
 
 def scan_domains():
     return redhawk.scan()
-
-def event_to_dict(event):
-    if hasattr(event, 'sourceIOR'):
-        event.sourceIOR = 'OMITTED'
-    event.sourceCategory = str(event.sourceCategory);
-
-    return event.__dict__
 
 class ResourceNotFound(Exception):
     def __init__(self, resource='resource', name='Unknown'):
@@ -63,8 +62,67 @@ class ApplicationReleaseError(Exception):
     def __str__(self):
         return "Not able to release waveform '%s'. %s" % (self.name, self.msg)
 
+# Helper method to convert the enumeration fields to something JSON serializable
+class EventHelper(object):
+    ENUM_MAP = {
+        'sourceCategory'      : [str(i) for i in StandardEvent.SourceCategoryType._items],
+        'stateChangeCategory' : [str(i) for i in StandardEvent.StateChangeCategoryType._items],
+        'stateChangeFrom'     : [str(i) for i in StandardEvent.StateChangeType._items],
+        'stateChangeTo'       : [str(i) for i in StandardEvent.StateChangeType._items],
+        }
 
-ODM_CHANNEL_NAME = 'ODM_Channel'
+    @staticmethod
+    # event is a python dictionary, the result of from_any() in GenericEventConsumer.
+    def format_event(event):
+        for k in event:
+            if 'sourceIOR' == k:
+                event[k] = 'OBJECT_REFERENCE'
+            elif k in EventHelper.ENUM_MAP:
+                v = event[k]
+                event[k] = {
+                    'value'        : str(v),
+                    'enumerations' : EventHelper.ENUM_MAP[k]
+                    }
+        return event
+
+
+class GenericEventConsumerMultiplexer (GenericEventConsumer):
+    __registration_id = None
+
+    def __init__(self, domain, on_disconnect=None, filter=None, keep_structs=None):
+        GenericEventConsumer.__init__(self, self.multiplex_deliver, on_disconnect, filter, keep_structs)
+        self.__listeners = []
+        self.__domain = domain
+        self.__registration_id = domain + str(uuid.uuid4())
+
+    @property
+    def registration_id(self):
+        return self.__registration_id
+    
+
+    def multiplex_deliver(self, event, typecode):
+        # TODO: Move this 'attempt' logic into the callback so that it returns true if successful
+        # and false if not.
+        def attempt(callback, msg):
+            try:
+                callback(msg)
+                return True
+            except WebSocketClosedError as e:
+                return False
+
+        message = { 
+            'domain'  : self.__domain, 
+            'event'   : EventHelper.format_event(event)
+            }
+        self.__listeners[:] = [cb for cb in self.__listeners if attempt(cb, message)]
+
+    def add_listener(self, callbackFn):
+        if callbackFn not in self.__listeners:
+            self.__listeners.append(callbackFn)
+
+    def rm_listener(self, callbackFn):
+        self.__listeners[:] = [cb for cb in self.__listeners if callbackFn != cb]
+
 
 class Domain:
     domMgr_ptr = None
@@ -72,60 +130,52 @@ class Domain:
     eventHandlers = None
     name = None
 
-
     def __init__(self, domainname):
-        logging.trace("Estasblishing domain %s", domainname, exc_info=True)
+        logging.trace("Establishing domain %s", domainname, exc_info=True)
         self.name = domainname
-        self.eventHandlers = {ODM_CHANNEL_NAME:[]}
+        self.eventHandlers = {}
         try:
             self._establish_domain()
         except StandardError, e:
             logging.warn("Unable to find domain %s", e, exc_info=1)
             raise ResourceNotFound("domain", domainname)
 
-    def disconnect(self):
-        self.odmListener.disconnect()
-        # TODO: When eventHandlers maps to other event handler entities, 
-        # be sure to disconnect from them.
+    def __del__(self):
+        if self.domMgr_ptr and self.eventHandlers:
+            for k, v in self.eventHandlers.items():
+                self.domMgr_ptr.unregisterFromEventChannel(v.registration_id, k)
 
-    def add_event_listener(self, callbackFn, topic=None):
-        # FIXME: Right now we only support ODM...
-        self.eventHandlers[ODM_CHANNEL_NAME].append(callbackFn)
+
+    def channel_disconnected(self, topic):
+        if topic in self.eventHandlers:
+            self.domMgr_ptr.unregisterFromEventChannel(self.eventHandlers[topic].registration_id, topic)
+            del self.eventHandlers[topic]
+
+    def add_event_listener(self, callbackFn, topic):
+        if topic not in self.eventHandlers:
+            handler = GenericEventConsumerMultiplexer(self.name, partial(self.channel_disconnected, topic))
+            self.domMgr_ptr.registerWithEventChannel(handler._this(), handler.registration_id, str(topic))
+            self.eventHandlers[topic] = handler
+        self.eventHandlers[topic].add_listener(callbackFn)
+
 
     def rm_event_listener(self, callbackFn, topic=None):
         if not topic:
             for k in self.eventHandlers:
                 self.rm_event_listener(callbackFn, k)
         else:
-            self.eventHandlers[topic].remove(callbackFn);
-
-    def _pass_event(self, event, topic):
-        event = event_to_dict(event)
-        handlers = self.eventHandlers.get(topic, [])
-        [ handler(event) for handler in handlers ]
-
-    def _odm_response(self, event):
-        self._pass_event(event, ODM_CHANNEL_NAME)
-
-    def _connect_odm_listener(self):
-        self.odmListener = ODMListener()
-        self.odmListener.connect(self.domMgr_ptr)
-        self.odmListener.deviceManagerAdded.addListener(self._odm_response)
-        self.odmListener.deviceManagerRemoved.addListener(self._odm_response)
-        self.odmListener.deviceAdded.addListener(self._odm_response)
-        self.odmListener.deviceRemoved.addListener(self._odm_response)
-        self.odmListener.applicationAdded.addListener(self._odm_response)
-        self.odmListener.applicationRemoved.addListener(self._odm_response)
+            self.eventHandlers[topic].rm_listener(callbackFn);
 
     def _establish_domain(self):
         redhawk.setTrackApps(False)
         self.domMgr_ptr = redhawk.attach(str(self.name))
-        self.domMgr_ptr.__odmListener = None
-        self._connect_odm_listener()
 
     def properties(self):
         props = self.domMgr_ptr.query([])  # TODO: self.domMgr_ptr._properties
         return props
+
+    def event_channels(self):
+        return ['ODM_Channel', 'IDM_Channel'] # TODO: Check the event service for names.
 
     def get_domain_info(self):
         if self.domMgr_ptr:
@@ -250,4 +300,3 @@ class Domain:
         for svc in svcs:
             ret_dict.append({'name': svc.name, 'id': svc._id})
         return ret_dict
-

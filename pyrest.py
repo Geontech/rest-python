@@ -79,17 +79,14 @@ class Application(tornado.web.Application):
             # The event handler sorts out what to do for us.
             (_BASE_URL + r'/(status|msg)', EventHandler, dict(redhawk=redhawk, _ioloop=_ioloop)),
 
-            # Domains
+            # Domains, wild guess on the eventChannels one.
             (_DOMAIN_PATH + _LIST, DomainInfo, dict(redhawk=redhawk)),
             (_DOMAIN_PATH + _ID, DomainInfo, dict(redhawk=redhawk)),
+            (_DOMAIN_PATH + _ID + r'/(eventChannels)', DomainInfo, dict(redhawk=redhawk)),
             (_DOMAIN_PATH + _ID + _PROPERTIES_PATH + _LIST, DomainProperties,   
                 dict(redhawk=redhawk)),
             (_DOMAIN_PATH + _ID + _PROPERTIES_PATH + _ID, DomainProperties, 
                 dict(redhawk=redhawk)),
-            # FYI: Added these two lines based on redhawk-config-service.js @ the client
-            #      but no tooling exists to make this work easily in 1.10
-            # (_DOMAIN_PATH + _ID + r'eventChannels', DomainInfo, dict(redhawk=redhawk)),
-            # (_DOMAIN_PATH + _ID + r'eventChannels' + _ID, EventHandler, dict(redhawk=redhawk)),
 
             # Applications
             (_APPLICATION_PATH + _LIST, Applications, dict(redhawk=redhawk)),
