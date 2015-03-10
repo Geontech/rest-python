@@ -809,7 +809,7 @@ angular.module('RedhawkServices', ['SubscriptionSocketService', 'RedhawkNotifica
         var self = this;
         RedhawkDevice.apply(self, arguments);
 
-        // Returns a promise
+        // Returns a promise, allocatioNId is optional.
         self.feiQuery = function(portId, allocationId) {
           return RedhawkREST.feiTunerDevice.query(
             {allocationId: allocationId, portId: portId, deviceId: self.id, managerId: self.deviceManager.id, domainId: self.domainId},
@@ -817,9 +817,9 @@ angular.module('RedhawkServices', ['SubscriptionSocketService', 'RedhawkNotifica
               angular.forEach(self.ports, function(port) {
                 if (port.name == data.name) {
                   if (port.active_allocation_ids) {
-                    // portData is the FEITuner structure w/ an updated allocation ID list and no id-keys filled.
+                    // data is the FEITuner structure w/ an updated allocation ID list and no id-keys filled.
                     // Find the port and remove any invalid allocation ids, then extend to update valid ones.
-                    var oldIDs = UtilityFunctions.filterOldList(port.active_allocation_ids, portData.active_allocation_ids);
+                    var oldIDs = UtilityFunctions.filterOldList(port.active_allocation_ids, data.active_allocation_ids);
                     for (var i=0; i < oldIDs.length; i++) {
                       delete port[oldIDs[i]];
                     }
@@ -957,8 +957,8 @@ var UtilityFunctions = UtilityFunctions || {
    * @param ports
    */
   processPorts : function(ports) {
-    var portDataTypeRegex = /^data(.*)$/;
-    angular.forEach(ports, function(port) {
+    var bulkioCheck = function(port) {
+      var portDataTypeRegex = /^data(.*)$/;
       var matches = portDataTypeRegex.exec(port.idl.type);
       if(matches) {
         port.canPlot = port.direction == "Uses" && port.idl.namespace == "BULKIO";
@@ -967,6 +967,21 @@ var UtilityFunctions = UtilityFunctions || {
       } else {
         port.canPlot = false;
       }
+    }
+
+    var feiCheck = function (port) {
+      if ("FRONTEND" == port.idl.namespace && "Provides" == port.direction) {
+        port.canFeiQuery = true;
+        port.canFeiTune = ("AnalogTuner" == port.idl.type || "DigitalTuner" == port.idl.type);
+      }
+      else {
+        port.canFeiQuery = false;
+        port.canFeiTune = false;
+      }
+    }
+    angular.forEach(ports, function(port) {
+      bulkioCheck(port);
+      feiCheck(port);
     });
   },
 
