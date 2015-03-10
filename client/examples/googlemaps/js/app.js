@@ -89,7 +89,7 @@ angular.module('gMapApp', [
       var oneshot = true;
       $scope.$watch('domain.deviceManagers', function (deviceManagers) {
         var self = this;
-        if (oneshot && deviceManagers) {
+        if (oneshot && deviceManagers && Object.keys(deviceManagers).length) {
           angular.forEach(deviceManagers, 
             function(manager) {
               $scope.processDeviceManager(manager.id); 
@@ -285,12 +285,12 @@ angular.module('gMapApp', [
   // Geon's GPS Wrapper (supports 'dummy' movable device)
   // Provides a convenience interface for UI development with
   // FEI GPS devices that have a Provides GPS port prefixed `gps` or `GPS`.
-  .factory('GenericGPS', ['RedhawkDevice',
-    function(RedhawkDevice) {
-      // Define and extend from the base factory, RedhawkDevice
+  .factory('GenericGPS', ['RedhawkFeiDevice',
+    function(RedhawkFeiDevice) {
+      // Define and extend from the base factory, RedhawkFeiDevice
       var GenericGPS = function() {
         var self = this;
-        RedhawkDevice.apply(self, arguments);
+        RedhawkFeiDevice.apply(self, arguments);
         // List of callbacks to fire during refresh()
         self._feiListeners = []; 
 
@@ -314,6 +314,7 @@ angular.module('gMapApp', [
               }
             }]);
           }
+          //self.refresh();
         }
 
         // Async refresh of position.  
@@ -383,7 +384,7 @@ angular.module('gMapApp', [
         }
       }
 
-      GenericGPS.prototype = Object.create(RedhawkDevice.prototype);
+      GenericGPS.prototype = Object.create(RedhawkFeiDevice.prototype);
       GenericGPS.prototype.constructor = GenericGPS;
       GenericGPS.prototype._updateFinished = function() {
         var self = this;
@@ -399,13 +400,7 @@ angular.module('gMapApp', [
 
         // Update isMovable.  The presence of the 'position' property structure
         // indicates this GPS can be reconfigured to a different location (i.e., demo dummy).
-        self.isMovable = false;
-        for (var i=0; i < self.properties.length; i++) {
-          if ('position' == self.properties[i].id) {
-            self.isMovable = true;
-            break;
-          }
-        }
+        self.isMovable = (UtilityFunctions.findPropId(self.properties, 'position')) ? true : false; 
         self.refresh();
       };
 
