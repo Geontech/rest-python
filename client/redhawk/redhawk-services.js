@@ -29,16 +29,18 @@ angular.module('RedhawkServices', ['SubscriptionSocketService', 'RedhawkNotifica
       }
     });
   }])
-  .constant('DefaultFactoryNames', {
+  .constant('BuiltInFactoryNames', {
     DOMAIN:         'RedhawkDomain',
     DEVICEMANAGER:  'RedhawkDeviceManager',
     DEVICE:         'RedhawkDevice',
+    FEIDEVICE:      'RedhawkFeiDevice',
+    FEITUNERDEVICE: 'RedhawkFeiTunerDevice',
     WAVEFORM:       'RedhawkWaveform',
-    COMPONENT:      'RedhawkComponent'
+    COMPONENT:      'RedhawkComponent',
   })
   /* Singleton REDHAWK Service for returning Domain factories */
-  .service('Redhawk', ['$injector', 'RedhawkREST', 'DefaultFactoryNames',
-    function($injector, RedhawkREST, DefaultFactoryNames){
+  .service('Redhawk', ['$injector', 'RedhawkREST', 'BuiltInFactoryNames',
+    function($injector, RedhawkREST, BuiltInFactoryNames){
       /**
        *
        * Factory Object returned to the injector. Used to store {Domain} objects.
@@ -85,10 +87,10 @@ angular.module('RedhawkServices', ['SubscriptionSocketService', 'RedhawkNotifica
        * @returns {Domain}
        */
       redhawk.getDomain = function(id, factoryName){
-        var storeId = id + ((factoryName) ? factoryName : DefaultFactoryNames.DOMAIN);
+        var storeId = id + ((factoryName) ? factoryName : BuiltInFactoryNames.DOMAIN);
 
         if(!redhawk.__domains[storeId]) {
-          var constructor = (factoryName) ? $injector.get(factoryName) : $injector.get(DefaultFactoryNames.DOMAIN);
+          var constructor = (factoryName) ? $injector.get(factoryName) : $injector.get(BuiltInFactoryNames.DOMAIN);
           redhawk.__domains[storeId] = new constructor(id);
         }
 
@@ -316,8 +318,8 @@ angular.module('RedhawkServices', ['SubscriptionSocketService', 'RedhawkNotifica
    * @constructor
    */
   .factory('RedhawkDomain', 
-           ['$injector', 'RedhawkNotificationService', 'RedhawkREST', 'RedhawkDeviceManager', 'RedhawkDevice', 'RedhawkWaveform', 'RedhawkComponent', 'RedhawkEventChannel', 'DefaultFactoryNames',
-    function($injector,   RedhawkNotificationService,   RedhawkREST,   RedhawkDeviceManager,   RedhawkDevice,   RedhawkWaveform,   RedhawkComponent,   RedhawkEventChannel, DefaultFactoryNames) {
+           ['$injector', 'RedhawkNotificationService', 'RedhawkREST', 'RedhawkDeviceManager', 'RedhawkDevice', 'RedhawkWaveform', 'RedhawkComponent', 'RedhawkEventChannel', 'BuiltInFactoryNames',
+    function($injector,   RedhawkNotificationService,   RedhawkREST,   RedhawkDeviceManager,   RedhawkDevice,   RedhawkWaveform,   RedhawkComponent,   RedhawkEventChannel, BuiltInFactoryNames) {
       var RedhawkDomain = function(id) {
         var self = this;
         var notify = RedhawkNotificationService;
@@ -399,7 +401,7 @@ angular.module('RedhawkServices', ['SubscriptionSocketService', 'RedhawkNotifica
          * @returns {*}
          */
         self.getDevice = function(id, deviceManagerId, factoryName) {
-          var storeId = id + ((factoryName) ? factoryName : DefaultFactoryNames.DEVICE);
+          var storeId = id + ((factoryName) ? factoryName : BuiltInFactoryNames.DEVICE);
           if(!self.devices[storeId]){
             var constructor = (factoryName) ? $injector.get(factoryName) : RedhawkDevice;
             self.devices[storeId] = new constructor(id, self._restId, deviceManagerId);
@@ -415,7 +417,7 @@ angular.module('RedhawkServices', ['SubscriptionSocketService', 'RedhawkNotifica
          * @returns {*}
          */
         self.getDeviceManager = function(id, factoryName) {
-          var storeId = id + ((factoryName) ? factoryName : DefaultFactoryNames.DEVICEMANAGER);
+          var storeId = id + ((factoryName) ? factoryName : BuiltInFactoryNames.DEVICEMANAGER);
           if(!self.deviceManagers[storeId]) {
             var constructor = (factoryName) ? $injector.get(factoryName) : RedhawkDeviceManager;
             self.deviceManagers[storeId] = new constructor(id, self._restId);
@@ -431,7 +433,7 @@ angular.module('RedhawkServices', ['SubscriptionSocketService', 'RedhawkNotifica
          * @returns {*}
          */
         self.getComponent = function(id, applicationId, factoryName) {
-          var storeId = id + ((factoryName) ? factoryName : DefaultFactoryNames.COMPONENT);
+          var storeId = id + ((factoryName) ? factoryName : BuiltInFactoryNames.COMPONENT);
           if(!self.components[storeId]) {
             var constructor = (factoryName) ? $injector.get(factoryName) : RedhawkComponent;
             self.components[storeId] = new constructor(id, self._restId, applicationId);
@@ -447,7 +449,7 @@ angular.module('RedhawkServices', ['SubscriptionSocketService', 'RedhawkNotifica
          * @returns {*}
          */
         self.getWaveform = function(id, factoryName){
-          var storeId = id + ((factoryName) ? factoryName : DefaultFactoryNames.WAVEFORM);
+          var storeId = id + ((factoryName) ? factoryName : BuiltInFactoryNames.WAVEFORM);
           if(!self.waveforms[storeId]) {
             var constructor = (factoryName) ? $injector.get(factoryName) : RedhawkWaveform;
             self.waveforms[storeId] = new constructor(id, self._restId);
@@ -758,48 +760,6 @@ angular.module('RedhawkServices', ['SubscriptionSocketService', 'RedhawkNotifica
         self.allocate = function(properties) { return self._commonSave('allocate', properties); };
         self.deallocate = function(properties) { return self._commonSave('deallocate', properties); };
 
-        /**
-         * FEI Related Methods
-         */
-        self._updatePortWithData = function(portData) {
-          angular.forEach(self.ports, function(port) {
-            if (port.name == portData.name && port.active_allocation_ids) {
-              // portData is the FEITuner structure w/ an updated allocation ID list and no id-keys filled.
-              // Find the port and remove any invalid allocation ids, then extend to update valid ones.
-              var oldIDs = UtilityFunctions.filterOldList(port.active_allocation_ids, portData.active_allocation_ids);
-              for (var i=0; i < oldIDs.length; i++) {
-                delete port[oldIDs[i]];
-              }
-            }
-            angular.extend(port, portData);
-          });
-        }; 
-
-        // Returns a promise
-        self.feiQuery = function(portId) {
-          return RedhawkREST.device.feiQuery(
-            {portId: portId, deviceId: self.id, managerId: self.deviceManager.id, domainId: self.domainId},
-            function(data) { self._updatePortWithData(data); }
-          ).$promise;
-        };
-
-        // Returns a promise
-        self.feiQueryId = function(portId, allocationId) {
-          return RedhawkREST.device.feiQueryId(
-            {allocationId: allocationId, portId: portId, deviceId: self.id, managerId: self.deviceManager.id, domainId: self.domainId},
-            function(data) { self._updatePortWithData(data); }
-          ).$promise;
-        };
-
-        // Returns a promise
-        self.feiTune = function(portId, allocationId, properties) {
-          return RedhawkRest.device.feiTune(
-              {allocationId: allocationId, portId: portId, deviceId: self.id, managerId: self.deviceManager.id, domainId: self.domainId},
-              {properties: properties},
-              function () { return self.feiQueryId(portId, allocationId); }
-          );
-        };
-
         self._load(id, domainId, managerId);
       };
 
@@ -807,6 +767,86 @@ angular.module('RedhawkServices', ['SubscriptionSocketService', 'RedhawkNotifica
       RedhawkDevice.prototype._updateFinished = function () { };
       return RedhawkDevice;
   }])
+
+  /**
+   * Angular-style resource that encapsulates a Device that is known to have an FEI interface
+   * Extends the RedhawkDevice factory
+   */
+  .factory('RedhawkFeiDevice', ['RedhawkDevice', 'RedhawkREST',
+    function(RedhawkDevice, RedhawkREST) {
+      var RedhawkFeiDevice = function() {
+        var self = this;
+        RedhawkDevice.apply(self, arguments);
+
+        // Returns a promise
+        self.feiQuery = function(portId) {
+          return RedhawkREST.feiDevice.query(
+            {portId: portId, deviceId: self.id, managerId: self.deviceManager.id, domainId: self.domainId},
+            function(data) { 
+              angular.forEach(self.ports, function(port) {
+                if (port.name == data.name)
+                  angular.extend(port, data);
+              }); 
+            }
+          ).$promise;
+        };
+      }
+
+      RedhawkFeiDevice.prototype = Object.create(RedhawkDevice.prototype);
+      RedhawkFeiDevice.prototype.constructor = RedhawkFeiDevice;
+      // No change to _updateFinished
+
+      return RedhawkFeiDevice;
+    }])
+  
+  /**
+   * Angular-style resource that encapsulates a Device that is known to have an FEI *Tuner interface
+   * Extends the RedhawkDevice factory
+   */
+  .factory('RedhawkFeiTunerDevice', ['RedhawkDevice', 'RedhawkREST', 
+    function(RedhawkDevice, RedhawkREST) {
+      var RedhawkFeiTunerDevice = function() {
+        var self = this;
+        RedhawkDevice.apply(self, arguments);
+
+        // Returns a promise
+        self.feiQuery = function(portId, allocationId) {
+          return RedhawkREST.feiTunerDevice.query(
+            {allocationId: allocationId, portId: portId, deviceId: self.id, managerId: self.deviceManager.id, domainId: self.domainId},
+            function(data) {
+              angular.forEach(self.ports, function(port) {
+                if (port.name == data.name) {
+                  if (port.active_allocation_ids) {
+                    // portData is the FEITuner structure w/ an updated allocation ID list and no id-keys filled.
+                    // Find the port and remove any invalid allocation ids, then extend to update valid ones.
+                    var oldIDs = UtilityFunctions.filterOldList(port.active_allocation_ids, portData.active_allocation_ids);
+                    for (var i=0; i < oldIDs.length; i++) {
+                      delete port[oldIDs[i]];
+                    }
+                  }
+                  angular.extend(port, data);
+                }
+              }); 
+            }
+          ).$promise;
+        };
+
+        // Returns a promise
+        self.feiTune = function(portId, allocationId, properties) {
+          return RedhawkREST.feiTunerDevice.tune(
+              {allocationId: allocationId, portId: portId, deviceId: self.id, managerId: self.deviceManager.id, domainId: self.domainId},
+              {properties: properties},
+              function () { return self.feiQuery(portId, allocationId); }
+          );
+        };
+      }
+
+      RedhawkFeiTunerDevice.prototype = Object.create(RedhawkDevice.prototype);
+      RedhawkFeiTunerDevice.prototype.constructor = RedhawkFeiTunerDevice;
+      // No change to _updateFinished
+
+      return RedhawkFeiTunerDevice;
+    }])
 
   .factory('RedhawkSocket', ['SubscriptionSocket', 'RedhawkConfig', function(SubscriptionSocket, RedhawkConfig) {
     var statusSocket = function() {
@@ -946,5 +986,14 @@ var UtilityFunctions = UtilityFunctions || {
       unique = true;
     }
     return out;
-  }
+  },
+
+  // Loops through a list of properties and returns the one of matching id (or undefined)
+  findPropId : function (properties, propId) {
+    for (var i = 0; i < properties.length; i++) {
+      if (propId == properties[i].id)
+        return properties[i];
+    }
+    return undefined;
+  },
 };
