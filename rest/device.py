@@ -72,4 +72,12 @@ class DeviceProperties(JsonHandler, PropertyHelper):
         for p in data['properties']:
             changes[p['id']] = p['value']
         cb = PUT_METHODS.get(data['method'], None)
-        yield cb(domainName, managerId, deviceId, changes)
+        try: 
+            r, message = yield cb(domainName, managerId, deviceId, changes)
+            if 'configure' == data['method']:
+                self._render_json({ 'method': data['method'], 'status': True , 'message': message})
+            else:
+                self._render_json({ 'method': data['method'], 'status': r , 'message': message})
+
+        except Exception as e:
+            self._render_json({ 'method': data['method'], 'status': False, 'message': "{0}".format(e) })

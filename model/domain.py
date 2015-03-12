@@ -62,7 +62,7 @@ class ApplicationReleaseError(Exception):
     def __str__(self):
         return "Not able to release waveform '%s'. %s" % (self.name, self.msg)
 
-# Helper method to convert the enumeration fields to something JSON serializable
+# Helper class to convert the enumeration fields to something JSON serializable
 class EventHelper(object):
     ENUM_MAP = {
         'sourceCategory'      : [str(i) for i in StandardEvent.SourceCategoryType._items],
@@ -145,6 +145,10 @@ class Domain:
             for k, v in self.eventHandlers.items():
                 self.domMgr_ptr.unregisterFromEventChannel(v.registration_id, k)
 
+    def disconnect(self):
+        old = dict(self.eventHandlers)
+        for topic in old:
+            self.channel_disconnected(topic)
 
     def channel_disconnected(self, topic):
         if topic in self.eventHandlers:

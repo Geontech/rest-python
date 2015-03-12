@@ -216,19 +216,29 @@ class Redhawk(object):
     def device_configure(self, domain_name, device_manager_id, device_id, new_properties):
         dev = self._get_device(domain_name, device_manager_id, device_id)
         changes = Redhawk._get_prop_changes(dev._properties, new_properties)
-        return dev.configure(changes)
+        try:
+            return dev.configure(changes), ''
+        except Exception as e:
+            return False, "{0}".format(e);
+
 
     @background_task
     def device_allocate(self, domain_name, device_manager_id, device_id, new_properties):
         dev = self._get_device(domain_name, device_manager_id, device_id)
         changes = Redhawk._get_prop_changes(dev._properties, new_properties)
-        return dev.allocateCapacity(changes)
+        try:
+            return dev.allocateCapacity(changes), ''
+        except Exception as e:
+            return False, "{0}".format(e);
 
     @background_task
     def device_deallocate(self, domain_name, device_manager_id, device_id, new_properties):
         dev = self._get_device(domain_name, device_manager_id, device_id)
         changes = Redhawk._get_prop_changes(dev._properties, new_properties)
-        return dev.deallocateCapacity(changes)
+        try:
+            return dev.deallocateCapacity(changes), ''
+        except Exception as e:
+            return False, "{0}".format(e);
 
     ##############################
     # SERVICE

@@ -5,6 +5,7 @@
 from redhawk.frontendInterfaces.FRONTEND import FrontendException, NotSupportedException, BadParameterException
 
 from tornado import gen, web
+import json
 
 from handler import JsonHandler
 from helper import PropertyHelper, PortHelper
@@ -62,19 +63,32 @@ class FEITunerHandler(JsonHandler, FEIHelper):
             port = self.find_port(int_name, dev)
             info = self.format_port(port)
 
-            CSV_KEY = 'FRONTEND::tuner_status::allocation_id_csv'
-            tuner_statuses = dev.frontend_tuner_status
-            allocations = [s[CSV_KEY].replace(" ", "").split(",") for s in tuner_statuses]
-            allocations = set([a for sublist in allocations for a in sublist if a != ""])
-            info['active_allocation_ids'] = list(allocations)
-
             if port._direction == 'Provides':
+                CSV_KEY = 'FRONTEND::tuner_status::allocation_id_csv'
+                tuner_statuses = dev.frontend_tuner_status
+                allocations = [s[CSV_KEY].replace(" ", "").split(",") for s in tuner_statuses]
+                allocations = set([a for sublist in allocations for a in sublist if a != ""])
+                info['active_allocation_ids'] = list(allocations)
+                info['tuner_statuses'] = [];
+                for s in tuner_statuses:
+                    el = []
+                    for k, v in s.items():
+                        el.append({
+                            "id"   : k,
+                            "value": v,
+                            "scaType": "simple" # FIXME: Hack to make it similar to what is returned in an allocation
+                            })
+                    info['tuner_statuses'].append(el)
+
+                info['allocations'] = []
+                
                 if allocation_id:
                     allocation_id = str(allocation_id)
-                    info[allocation_id] = self.get_attribute(port, allocation_id, attribute_name) or {}
-                else:
-                    for alloc_id in allocations:
-                        info[alloc_id] = {}
+                    attr = self.get_attribute(port, allocation_id, attribute_name)
+                    info['allocations'].append({
+                        "id"    : allocation_id,
+                        "value" : attr
+                        })
 
             self._render_json(info)
 
@@ -114,11 +128,11 @@ class FEITunerHandler(JsonHandler, FEIHelper):
             except:
                 raise
 
-            return {attribute_name: val}
+            return { "id": attribute_name, "value": val }
         else:
-            vals = {}
+            vals = []
             for attribute_name in cb.keys():
-                vals.update(FEITunerHandler.get_attribute(port, allocation_id, attribute_name))
+                vals.append(FEITunerHandler.get_attribute(port, allocation_id, attribute_name))
             return vals
 
     @staticmethod
@@ -134,10 +148,7 @@ class FEITunerHandler(JsonHandler, FEIHelper):
             raise FEIInterfaceTypeException(port._interface.name)
 
         if attribute_name in cb:
-            try:
-                cb[attribute_name](allocation_id, value)
-            except Exception as e:
-                self._handle_request_exception(e)
+            cb[attribute_name](allocation_id, value)
         else:
             raise FEIAttributeHasNoCallbackException(attribute_name)
 
@@ -154,13 +165,7 @@ class FEITunerHandler(JsonHandler, FEIHelper):
 
     @staticmethod
     def general_set_callbacks(port):
-        return { 
-            'tuner_control'         : port.ref.setTunerType, 
-            'tuner_device_control'  : port.ref.setTunerDeviceControl,
-            'tuner_group_id'        : port.ref.setTunerGroupId,
-            'tuner_rf_flow_id'      : port.ref.setTunerRfFlowId,
-            'tuner_status'          : port.ref.setTunerStatus
-        }
+        return { }  # All generals are get-only.
 
     @staticmethod
     def analog_get_callbacks(port):

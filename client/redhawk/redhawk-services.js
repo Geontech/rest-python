@@ -748,12 +748,17 @@ angular.module('RedhawkServices', ['SubscriptionSocketService', 'RedhawkNotifica
 
         /**
          * Save Property State method: Configure, Allocate, Deallocate
+         * The lastSaveResponse can be used to see the server response (success, fail, etc.)
          */
+        self.lastSaveResponse = undefined;
         self._commonSave = function(method, properties) {
           return RedhawkREST.device.save(
               {deviceId: self.id, managerId: self.deviceManager.id, domainId: self.domainId},
               {method: method, properties: properties},
-              function(){ $timeout(self._reload, 1000); }
+              function(response){ 
+                $timeout(self._reload, 1000);
+                self.lastSaveResponse = response;
+              }
           );
         };
         self.configure = function(properties) { return self._commonSave('configure', properties); };
@@ -808,6 +813,16 @@ angular.module('RedhawkServices', ['SubscriptionSocketService', 'RedhawkNotifica
       var RedhawkFeiTunerDevice = function() {
         var self = this;
         RedhawkDevice.apply(self, arguments);
+
+        self.getTunerAllocationProps = function () {
+          var p = UtilityFunctions.findPropId(self.properties, 'FRONTEND::tuner_allocation');
+          return angular.copy(p);
+        }
+
+        self.getListenerAllocationProps = function () {
+          var p = UtilityFunctions.findPropId(self.properties, 'FRONTEND::listener_allocation');
+          return angular.copy(p);
+        }
 
         // Returns a promise, allocatioNId is optional.
         self.feiQuery = function(portId, allocationId) {
