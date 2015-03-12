@@ -748,12 +748,17 @@ angular.module('RedhawkServices', ['SubscriptionSocketService', 'RedhawkNotifica
 
         /**
          * Save Property State method: Configure, Allocate, Deallocate
+         * The lastSaveResponse can be used to see the server response (success, fail, etc.)
          */
+        self.lastSaveResponse = undefined;
         self._commonSave = function(method, properties) {
           return RedhawkREST.device.save(
               {deviceId: self.id, managerId: self.deviceManager.id, domainId: self.domainId},
               {method: method, properties: properties},
-              function(){ $timeout(self._reload, 1000); }
+              function(response){ 
+                $timeout(self._reload, 1000);
+                self.lastSaveResponse = response;
+              }
           );
         };
         self.configure = function(properties) { return self._commonSave('configure', properties); };
@@ -809,7 +814,17 @@ angular.module('RedhawkServices', ['SubscriptionSocketService', 'RedhawkNotifica
         var self = this;
         RedhawkDevice.apply(self, arguments);
 
-        // Returns a promise
+        self.getTunerAllocationProps = function () {
+          var p = UtilityFunctions.findPropId(self.properties, 'FRONTEND::tuner_allocation');
+          return angular.copy(p);
+        }
+
+        self.getListenerAllocationProps = function () {
+          var p = UtilityFunctions.findPropId(self.properties, 'FRONTEND::listener_allocation');
+          return angular.copy(p);
+        }
+
+        // Returns a promise, allocatioNId is optional.
         self.feiQuery = function(portId, allocationId) {
           return RedhawkREST.feiTunerDevice.query(
             {allocationId: allocationId, portId: portId, deviceId: self.id, managerId: self.deviceManager.id, domainId: self.domainId},
@@ -817,9 +832,9 @@ angular.module('RedhawkServices', ['SubscriptionSocketService', 'RedhawkNotifica
               angular.forEach(self.ports, function(port) {
                 if (port.name == data.name) {
                   if (port.active_allocation_ids) {
-                    // portData is the FEITuner structure w/ an updated allocation ID list and no id-keys filled.
+                    // data is the FEITuner structure w/ an updated allocation ID list and no id-keys filled.
                     // Find the port and remove any invalid allocation ids, then extend to update valid ones.
-                    var oldIDs = UtilityFunctions.filterOldList(port.active_allocation_ids, portData.active_allocation_ids);
+                    var oldIDs = UtilityFunctions.filterOldList(port.active_allocation_ids, data.active_allocation_ids);
                     for (var i=0; i < oldIDs.length; i++) {
                       delete port[oldIDs[i]];
                     }
@@ -957,8 +972,8 @@ var UtilityFunctions = UtilityFunctions || {
    * @param ports
    */
   processPorts : function(ports) {
-    var portDataTypeRegex = /^data(.*)$/;
-    angular.forEach(ports, function(port) {
+    var bulkioCheck = function(port) {
+      var portDataTypeRegex = /^data(.*)$/;
       var matches = portDataTypeRegex.exec(port.idl.type);
       if(matches) {
         port.canPlot = port.direction == "Uses" && port.idl.namespace == "BULKIO";
@@ -967,6 +982,21 @@ var UtilityFunctions = UtilityFunctions || {
       } else {
         port.canPlot = false;
       }
+    }
+
+    var feiCheck = function (port) {
+      if ("FRONTEND" == port.idl.namespace && "Provides" == port.direction) {
+        port.canFeiQuery = true;
+        port.canFeiTune = ("AnalogTuner" == port.idl.type || "DigitalTuner" == port.idl.type);
+      }
+      else {
+        port.canFeiQuery = false;
+        port.canFeiTune = false;
+      }
+    }
+    angular.forEach(ports, function(port) {
+      bulkioCheck(port);
+      feiCheck(port);
     });
   },
 
