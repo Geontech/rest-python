@@ -21,8 +21,145 @@
     'RedhawkServices', 
     'ngRoute'
   ])
+  // This is a PSD plot PSD directive.  Provide the buffer and sri elements (required).
+  // <div sig-plot-psd buffer="mybuffer" sri="mysri"></div>
+  .directive('sigPlotPsd', ['SigplotController', function(SigplotController) { 
+    return { 
+      restrict: 'A',
+      scope: {
+        buffer:       '=', // Data buffer
+        sri:          '=', // SRI structure
+        dataType:     '=', // 'float', 'octet', etc.
+        controlFn:    '&', // Callback function to parent (TBD)
+        overrideID:   '@', // Override the DOM element ID the plot will use.
+        plotSettings: '@', // Plot Settings
+        fillStyle:    '@', // Filling settings
+      },
+      link: function(scope, element, attrs) {
+        // Default the streamID to either the overrideID or the SRI stream ID
+        // Then set the dom element's ID to that ID.  This lets sigplot's constructor
+        // find the right dom element.
+        var streamID = scope.overrideID || scope.sri.streamID;
+        element.attr('id', streamID);
+
+        // See http://demo.axiosengineering.com/sigplot/doc/global.html#UNITS
+        // regarding the `units` enumerations
+        scope.dataSettings = {
+          xdelta  :     1,
+          xunits  :     3,  // Frequency (Hz)
+          xstart  :     0,
+          yunits  :    27,  // Magnitude, 20-log
+          ystart  :     0,
+          subsize :  2048,
+          size    :  2048,
+          format  :  'SF',  
+        };
+
+        // Derived from admin-console
+        // NOTE: These settings are similar to xmidas, on which sigplot is based.
+        scope.plotSettings = scope.plotSettings || {
+          all               : true,
+          expand            : true,
+          autox             : 3,
+          autoy             : 3,
+          ydiv              : 10,
+          xdiv              : 10,
+          autohide_panbars  : true,
+          xcnt              : 0,
+          colors            : {bg: "#222", fg: "#888"},
+          cmode             : "MA"
+        }
+
+        // Plot handle and fill settings.
+        scope.plot = new sigplot.Plot(
+          document.getElementById(streamID), 
+          scope.plotSettings);
+
+        // Fill settings are CSS settings
+        scope.fillStyle = scope.fillStyle || [
+            "rgba(255, 255, 100, 0.7)",
+            "rgba(255, 0, 0, 0.7)",
+            "rgba(0, 255, 0, 0.7)",
+            "rgba(0, 0, 255, 0.7)"
+          ];
+        scope.plot.change_settings({
+          fillStyle: scope.fillStyle,
+        });
+
+        // The plot layer is what gets updated when the buffer is drawn.
+        // Adding multiple layers will create a legend such that the file_name
+        // is the signal name.
+        scope.plotLayer = scope.plot.overlay_array(null,
+          angular.extend(scope.dataSettings, {
+            'file_name' : streamID,  // Name in legend, if present
+          })
+        );
+      },
+      controller: SigplotController,
+    }; 
+  }])
+
+  // Similar to admin-console's version, the controller manages updating
+  // settings as the SRI changes, or redrawing the layer if the buffer changes.
+  .controller('SigplotController', ['$scope', 
+    function ($scope) {
+        var reloadSettings = true;
+
+        var getFormatStr = function(dataType, sriMode) {
+          var s = (sriMode === 0) ? 'S' : 'C';
+          switch (dataType) {
+            case 'float':
+              s += 'F';
+              break;
+            case 'double':
+              s += 'D';
+            case 'short':
+            case 'char':
+            case 'octet':
+            default:
+              s += 'B';
+              break;
+          }
+          return s;
+        }
+
+        var oneShot = true;
+        $scope.$watch('sri', function(changed) {
+          if (!!changed || oneShot) {
+            oneShot = false;
+            reloadSettings = true;
+            $scope.dataSettings.xstart = $scope.sri.xstart;
+            $scope.dataSettings.xdelta = $scope.sri.xdelta;
+            $scope.dataSettings.subsize = $scope.sri.subsize;
+            $scope.dataSettings.format = getFormatStr($scope.dataType, $scope.sri.mode)
+          }
+        });
+
+        $scope.$watchCollection('buffer', function(data) {
+          if (!!data) {
+            if ($scope.dataSettings.size != data.length){
+              reloadSettings = true;
+              $scope.dataSettings.size = data.length;
+            }
+
+            if (reloadSettings) {
+              reloadSettings = false;
+              $scope.plot.reload($scope.plotLayer, data, $scope.dataSettings);
+              $scope.plot.refresh();
+            }
+            else {
+              $scope.plot.reload($scope.plotLayer, data);
+            }
+            // A hack noted that this field gets ignored repeatedly.
+            // this fixes it.
+            $scope.plot._Gx.ylab = $scope.dataSettings.yunits;
+          }
+        });
+      }])
+
+  // OBE: This is the controller from admin-console, kept as a reference.
   .controller('SigPlot', ['$scope', '$routeParams', 'RedhawkSocket', 'user',
-    function($scope, $routeParams, RedhawkSocket, user){
+    function($scope, $routeParams, RedhawkSocket, user) {
 
       $scope.waveformId = $routeParams.waveformId;
       $scope.componentId = $routeParams.componentId;
