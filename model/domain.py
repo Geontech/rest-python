@@ -75,7 +75,9 @@ class EventHelper(object):
     # event is a python dictionary, the result of from_any() in GenericEventConsumer.
     def format_event(event):
         for k in event:
-            if 'sourceIOR' == k:
+            if type(k) == dict:
+                EventHelper.format_event(k)
+            elif 'sourceIOR' == k:
                 event[k] = 'OBJECT_REFERENCE'
             elif k in EventHelper.ENUM_MAP:
                 v = event[k]
