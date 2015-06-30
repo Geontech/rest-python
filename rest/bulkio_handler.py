@@ -58,7 +58,7 @@ class BulkIOWebsocketHandler(websocket.WebSocketHandler):
         'dataFloat':  _floats2bin,
         'dataDouble': _doubles2bin,
         'dataOctet': _pass_through,
-        'dataShort': _pass_through
+        'dataShort': _pass_through  # FIXME: This definitely didn't work with a dataShort port..."got type <list>" exception
     }
 
     def initialize(self, kind, redhawk=None, _ioloop=None):
