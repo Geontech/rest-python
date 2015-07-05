@@ -75,9 +75,9 @@ class Application(tornado.web.Application):
             (r"/apps/(.*)", tornado.web.StaticFileHandler, {"path": os.path.join(cwd, "apps")}),
             (r"/client/(.*)", tornado.web.StaticFileHandler, {"path": os.path.join(cwd, "client")}),
 
-            # Top-level Event Handler REDHAWK status channel and messaging system
+            # Top-level Event Handler REDHAWK status channel and event channel system
             # The event handler sorts out what to do for us.
-            (_BASE_URL + r'/(status|msg)', EventHandler, dict(redhawk=redhawk, _ioloop=_ioloop)),
+            (_BASE_URL + r'/(redhawk|events)', EventHandler, dict(redhawk=redhawk, _ioloop=_ioloop)),
 
             # Domains, wild guess on the eventChannels one.
             (_DOMAIN_PATH + _LIST, DomainInfo, dict(redhawk=redhawk)),

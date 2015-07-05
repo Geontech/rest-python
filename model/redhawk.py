@@ -29,6 +29,7 @@ from _utils.tasking import background_task
 from domain import Domain, scan_domains, ResourceNotFound
 
 from tornado.websocket import WebSocketClosedError
+from tornado import ioloop
 
 import collections
 
@@ -40,6 +41,8 @@ class Redhawk(object):
     def __init__(self):
         self.__domains = {}
         self.statusListeners = []
+        self.pollTimer = ioloop.PeriodicCallback(self.poll_domains, 5000)
+        self.pollTimer.start()
 
     def _get_domain(self, domain_name):
         name = str(domain_name)
@@ -70,13 +73,14 @@ class Redhawk(object):
 
         if additions or removals:
             message = self._status_message()
+            message.update(dict(added=additions, removed=removals))
             self.statusListeners[:] = [h for h in self.statusListeners if _attemptCallback(h, message)]
 
-    def add_status_listener(self, callbackFn):
+    def add_redhawk_listener(self, callbackFn):
         self.statusListeners.append(callbackFn)
         callbackFn(self._status_message())
 
-    def rm_status_listener(self, callbackFn):
+    def rm_redhawk_listener(self, callbackFn):
         self.statusListeners.remove(callbackFn)
 
     def add_event_listener(self, callbackFn, domain_name=None, topic=None):

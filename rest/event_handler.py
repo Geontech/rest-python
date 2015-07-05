@@ -34,15 +34,16 @@ class EventHandler(websocket.WebSocketHandler):
         self.ioloop = _ioloop
 
     def open(self, arg):
-        # register event handling.  Arg will be either status or msg
-        # msg listeners are created once the topic is announced with a message.
-        if 'status' == arg:
+        # register event handling.  Arg will be either `redhawk` or `events`
+        # representing the outermost REDHAWK subsystem watcher, or the
+        # event channels, filtered down to a specific domain.
+        if 'redhawk' == arg:
             self.handlerType = arg
-            self.redhawk.add_status_listener(self._post_event)
-            logging.debug('STATUS Event Handler OPEN')
-        elif 'msg' == arg:
+            self.redhawk.add_redhawk_listener(self._post_event)
+            logging.debug('REDHAWK Event Handler OPEN')
+        elif 'events' == arg:
             self.handlerType = arg
-            logging.debug('EVENT/MSG Event Handler OPEN')
+            logging.debug('EVENT CHANNEL Event Handler OPEN')
         else:
             logging.error('Unknown Event Handler: {0}'.format(arg))
 
@@ -57,22 +58,21 @@ class EventHandler(websocket.WebSocketHandler):
             if domainId and topic:
                 if   'ADD'    == command:
                     self.redhawk.add_event_listener(self._post_event, domainId, topic)
-                    logging.debug('EVENT/MSG Event Handler subscribing to {0}:{1}'.format(domainId, topic))
+                    logging.debug('EVENT CHANNEL Event Handler subscribing to {0}:{1}'.format(domainId, topic))
                 elif 'REMOVE' == command:
                     self.redhawk.rm_event_listener(self._post_event, domainId, topic)
-                    logging.debug('EVENT/MSG Event Handler unsubscribing to {0}:{1}'.format(domainId, topic))
+                    logging.debug('EVENT CHANNEL Event Handler unsubscribing to {0}:{1}'.format(domainId, topic))
                 else:
                     logging.error('Unknown command received: {0}'.format(command))
             else:
                 logging.error('Invalid message format sent to EventHandler: {0}'.format(message))
 
     def on_close(self):
-        logging.debug('Event Handler CLOSE')
         if 'status' == self.handlerType:
-            logging.debug('STATUS Event Handler CLOSE')
-            self.redhawk.rm_status_listener(self._post_event)
+            logging.debug('REDHAWK Event Handler CLOSE')
+            self.redhawk.rm_redhawk_listener(self._post_event)
         elif 'msg' == self.handlerType:
-            logging.debug('EVENT/MSG Event Handler CLOSE')
+            logging.debug('EVENT CHANNEL Event Handler CLOSE')
             self.redhawk.rm_event_listener(self._post_event)
 
     def _post_event(self, event):
