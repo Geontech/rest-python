@@ -28,6 +28,8 @@ from _utils.tasking import background_task
 
 from domain import Domain, scan_domains, ResourceNotFound
 
+from ossie.utils import prop_helpers
+
 from tornado.websocket import WebSocketClosedError
 from tornado import ioloop
 
@@ -160,8 +162,9 @@ class Redhawk(object):
         for prop in current_props:
             if prop.id in new_properties:
                 if new_properties[prop.id] != prop.queryValue():
-                    changes[prop.id] = (type(prop.queryValue())) (Redhawk._clean_property(new_properties[prop.id]))
-        return changes
+                    TYPE = prop_helpers.TYPE_MAP.get(prop.type, [type(prop.queryValue())])
+                    changes[str(prop.id)] = (TYPE[0]) (Redhawk._clean_property(new_properties[prop.id]))
+        return props_from_dict(changes)
 
     ##############################
     # COMPONENT
