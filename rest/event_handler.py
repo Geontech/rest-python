@@ -50,7 +50,7 @@ class EventHandler(websocket.WebSocketHandler):
     def on_message(self, message):
         logging.debug('stream message[%d]: %s', len(message), message)
         message = json.loads(message)
-        if 'msg' == self.handlerType:
+        if 'events' == self.handlerType:
             # Message format is {command: ADD/REMOVE, topic:channel_name, domainId:domainId }
             command = message.get('command', None)
             domainId = message.get('domainId', None)
@@ -78,3 +78,10 @@ class EventHandler(websocket.WebSocketHandler):
     def _post_event(self, event):
         # if connection still open, post the next event
         self.ioloop.add_callback(self.write_message, event)
+
+    def write_message(self, *args, **ioargs):
+        # hide WebSocketClosedError because it's very likely
+        try:
+            super(EventHandler, self).write_message(*args, **ioargs)
+        except websocket.WebSocketClosedError:
+            logging.debug('Received WebSocketClosedError. Ignoring')

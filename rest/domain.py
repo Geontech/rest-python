@@ -50,8 +50,6 @@ class DomainInfo(JsonHandler, PropertyHelper):
                     'applications': apps,
                     'deviceManagers': device_managers
                 }
-            elif 'eventChannels' == args[0]:
-                info = {'eventChannels': event_channels}
 
         else:
             domains = yield self.redhawk.get_domain_list()

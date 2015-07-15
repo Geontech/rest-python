@@ -82,7 +82,6 @@ class Application(tornado.web.Application):
             # Domains, wild guess on the eventChannels one.
             (_DOMAIN_PATH + _LIST, DomainInfo, dict(redhawk=redhawk)),
             (_DOMAIN_PATH + _ID, DomainInfo, dict(redhawk=redhawk)),
-            (_DOMAIN_PATH + _ID + r'/(eventChannels)', DomainInfo, dict(redhawk=redhawk)),
             (_DOMAIN_PATH + _ID + _PROPERTIES_PATH + _LIST, DomainProperties,   
                 dict(redhawk=redhawk)),
             (_DOMAIN_PATH + _ID + _PROPERTIES_PATH + _ID, DomainProperties, 

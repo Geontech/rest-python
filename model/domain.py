@@ -88,11 +88,11 @@ class EventHelper(object):
         return event
 
 
-class GenericEventConsumerMultiplexer (GenericEventConsumer):
+class TopicConsumer (GenericEventConsumer):
     __registration_id = None
 
     def __init__(self, domain, on_disconnect=None, filter=None, keep_structs=None):
-        GenericEventConsumer.__init__(self, self.multiplex_deliver, on_disconnect, filter, keep_structs)
+        GenericEventConsumer.__init__(self, self.deliver, on_disconnect, filter, keep_structs)
         self.__listeners = []
         self.__domain = domain
         self.__registration_id = domain + str(uuid.uuid4())
@@ -102,9 +102,7 @@ class GenericEventConsumerMultiplexer (GenericEventConsumer):
         return self.__registration_id
     
 
-    def multiplex_deliver(self, event, typecode):
-        # TODO: Move this 'attempt' logic into the callback so that it returns true if successful
-        # and false if not.
+    def deliver(self, event, typecode):
         def attempt(callback, msg):
             try:
                 callback(msg)
@@ -112,10 +110,7 @@ class GenericEventConsumerMultiplexer (GenericEventConsumer):
             except WebSocketClosedError as e:
                 return False
 
-        message = { 
-            'domain'  : self.__domain, 
-            'event'   : EventHelper.format_event(event)
-            }
+        message = dict(event=EventHelper.format_event(event))
         self.__listeners[:] = [cb for cb in self.__listeners if attempt(cb, message)]
 
     def add_listener(self, callbackFn):
@@ -129,13 +124,13 @@ class GenericEventConsumerMultiplexer (GenericEventConsumer):
 class Domain:
     domMgr_ptr = None
     odmListener = None
-    eventHandlers = None
+    topicHandlers = None
     name = None
 
     def __init__(self, domainname):
         logging.trace("Establishing domain %s", domainname, exc_info=True)
         self.name = domainname
-        self.eventHandlers = {}
+        self.topicHandlers = {}
         try:
             self._establish_domain()
         except StandardError, e:
@@ -143,34 +138,40 @@ class Domain:
             raise ResourceNotFound("domain", domainname)
 
     def __del__(self):
-        if self.domMgr_ptr and self.eventHandlers:
-            for k, v in self.eventHandlers.items():
-                self.domMgr_ptr.unregisterFromEventChannel(v.registration_id, k)
+        if self.domMgr_ptr and self.topicHandlers:
+            for k, v in self.topicHandlers.items():
+                try: 
+                    self.domMgr_ptr.unregisterFromEventChannel(v.registration_id, k)
+                except:
+                    pass # TODO: Ignore the corba exception, specifically BAD_PARAM
 
     def disconnect(self):
-        old = dict(self.eventHandlers)
+        old = dict(self.topicHandlers)
         for topic in old:
             self.channel_disconnected(topic)
 
     def channel_disconnected(self, topic):
-        if topic in self.eventHandlers:
-            self.domMgr_ptr.unregisterFromEventChannel(self.eventHandlers[topic].registration_id, topic)
-            del self.eventHandlers[topic]
+        if topic in self.topicHandlers:
+            try:
+                self.domMgr_ptr.unregisterFromEventChannel(self.topicHandlers[topic].registration_id, topic)
+            except:
+                pass # TODO: Ignore the corba exception, specifically BAD_PARAM
+            del self.topicHandlers[topic]
 
     def add_event_listener(self, callbackFn, topic):
-        if topic not in self.eventHandlers:
-            handler = GenericEventConsumerMultiplexer(self.name, partial(self.channel_disconnected, topic))
+        if topic not in self.topicHandlers:
+            handler = TopicConsumer(self.name, partial(self.channel_disconnected, topic))
             self.domMgr_ptr.registerWithEventChannel(handler._this(), handler.registration_id, str(topic))
-            self.eventHandlers[topic] = handler
-        self.eventHandlers[topic].add_listener(callbackFn)
+            self.topicHandlers[topic] = handler
+        self.topicHandlers[topic].add_listener(callbackFn)
 
 
     def rm_event_listener(self, callbackFn, topic=None):
         if not topic:
-            for k in self.eventHandlers:
+            for k in self.topicHandlers:
                 self.rm_event_listener(callbackFn, k)
         else:
-            self.eventHandlers[topic].rm_listener(callbackFn);
+            self.topicHandlers[topic].rm_listener(callbackFn);
 
     def _establish_domain(self):
         redhawk.setTrackApps(False)
@@ -180,8 +181,8 @@ class Domain:
         props = self.domMgr_ptr.query([])  # TODO: self.domMgr_ptr._properties
         return props
 
-    def event_channels(self):
-        return ['ODM_Channel', 'IDM_Channel'] # TODO: Check the event service for names.
+    def event_channels(self): # TODO: Check the event service for names.
+        return self.topicHandlers.keys()
 
     def get_domain_info(self):
         if self.domMgr_ptr:
