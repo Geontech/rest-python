@@ -110,7 +110,7 @@ class TopicConsumer (GenericEventConsumer):
             except WebSocketClosedError as e:
                 return False
 
-        message = dict(event=EventHelper.format_event(event))
+        message = EventHelper.format_event(event)
         self.__listeners[:] = [cb for cb in self.__listeners if attempt(cb, message)]
 
     def add_listener(self, callbackFn):
