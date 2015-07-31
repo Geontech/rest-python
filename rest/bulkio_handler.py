@@ -22,6 +22,8 @@ import logging
 
 from bulkio.bulkioInterfaces import BULKIO__POA
 
+from omniORB import CORBA
+
 # third party imports
 from tornado import ioloop, gen
 from tornado import websocket
@@ -117,6 +119,8 @@ class BulkIOWebsocketHandler(websocket.WebSocketHandler):
         logging.debug('Stream CLOSE')
         try:
             self.port.disconnectPort(self._portname)
+        except CORBA.TRANSIENT:
+            pass 
         except Exception, e:
             logging.exception('Error disconnecting port %s' % self._portname)
 
