@@ -1,0 +1,33 @@
+{% assign rest_base = "/redhawk/rest" %}
+{% capture rest_redhawk %}{{ rest_base }}/redhawk{% endcapture %}
+{% capture rest_events %}{{ rest_base }}/events{% endcapture %}
+
+{% capture rest_domains %}{{ rest_base }}/domains{% endcapture %}
+{% capture rest_domain %}{{ rest_domains }}/DOMAIN_NAME{% endcapture %}
+
+{% capture rest_devicemanagers %}{{ rest_domain }}/deviceManagers{% endcapture %}
+{% capture rest_devicemanager %}{{ rest_devicemanagers }}/DEVICEMANAGER_ID{% endcapture %}
+
+{% capture rest_devices %}{{ rest_devicemanager }}/devices{% endcapture %}
+{% capture rest_device %}{{ rest_devices }}/DEVICE_ID{% endcapture %}
+
+{% capture rest_applications %}{{ rest_domain }}/applications{% endcapture %}
+{% capture rest_application %}{{ rest_applications }}/APPLICATION_ID{% endcapture %}
+
+{% capture rest_components %}{{ rest_application }}/components{% endcapture %}
+{% capture rest_component %}{{ rest_components }}/COMPONENT_ID{% endcapture %}
+
+{% assign rest_ports = "PARENT_PATH/ports" %}
+{% capture rest_port %}{{ rest_ports }}/PORT_NAME{% endcapture %}
+
+{% capture rest_fei_tuner %}{{ rest_ports }}/...Tuner...{% endcapture %}
+{% capture rest_fei_rfinfo %}{{ rest_ports }}/RFInfo...{% endcapture %}
+{% capture rest_fei_rfsource %}{{ rest_ports }}/RFSource...{% endcapture %}
+{% capture rest_fei_gps %}{{ rest_ports }}/GPS...{% endcapture %}
+{% capture rest_fei_navdata %}{{ rest_ports }}/NavData...{% endcapture %}
+
+{% capture rest_bulkio %}{{ rest_port }}/bulkio{% endcapture %}
+
+{% assign rest_properties = "PARENT_PATH/properties" %}
+{% capture rest_property %}{{ rest_properties }}/PROPERTY_ID{% endcapture %}
+
