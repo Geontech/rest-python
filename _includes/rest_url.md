@@ -1,1 +1,0 @@
->**Base URL:** {{ include.rest_path }}
