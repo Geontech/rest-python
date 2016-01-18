@@ -2,7 +2,6 @@
 layout: page
 title: Welcome!
 ---
-{% include rest_setup %}
 {% include JB/setup %}
 
 Welcome to the documentation for [Geon Technology's](http://www.geontech.com) fork of [rest-python](http://github.com/geontech/rest-python).  
@@ -21,16 +20,19 @@ The rest-python interface is a Tornado webserver that relies on the Python inter
 
 Along the right side of the page, you'll find a list of pages representing each piece of a REDHAWK system that is represented in this API.  The API leverages a RESTful interface, utilizing HTTP _GET_, _PUSH_, _PUT_, and _WRITE_ for most static actions.  All of these actions involve JSON structures which will be provided in more detail on each page.
 
-To confirm rest-python is running, open a browser to its address on port 8080.  The REST interface begins at the URL `{{ rest_base }}`.  And like typical REST interfaces, the URL builds outwards using one of the returned structure's values.  
+To confirm rest-python is running, open a browser to its address on port 8080.  The REST interface begins at the URL `{{ site.rest_api.base }}`.  And like typical REST interfaces, the URL builds outwards using one of the returned structure's values.  
 
-For example, navigating to the list of domains `{{ rest_domains }}` yields a single structure with an array list of names:
+For example, navigating to the list of domains `{{ site.rest_api.domains }}` yields a single structure with an array list of names:
 
-{% highlight json %}
+{% highlight javascript %}
 { 
-    domains: [ REDHAWK_DEV, REDHAWK_DEV2 ] 
+    'domains': [ 
+        'REDHAWK_DEV', 
+        'REDHAWK_DEV2' 
+    ] 
 }
 {% endhighlight %}
 
-Navigating further to one of the options would be `{{ rest_domains }}/REDHAWK_DEV/`.  
+Navigating further to one of the options would be `{{ site.rest_api.domains }}/REDHAWK_DEV/`.  
 
 That's the absolute basics of things; the individual API pages dig much deeper.
