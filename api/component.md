@@ -5,6 +5,6 @@ group:  API
 order:  5
 ---
 {% include JB/setup %}
-{% include rest_setup %}
-{% include rest_url.md rest_path=rest_component %}
 This page is for Component information
+
+{% include api_post_list.html post_group='component' %}

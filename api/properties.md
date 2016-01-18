@@ -5,5 +5,6 @@ group:  API
 order:  7
 ---
 {% include JB/setup %}
-{% include rest_setup %}
-{% include rest_url.md rest_path=rest_property %}
+information on properties
+
+{% include api_post_list.html post_group='properties' %}

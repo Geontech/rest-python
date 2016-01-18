@@ -5,6 +5,6 @@ group:  API
 order:  1
 ---
 {% include JB/setup %}
-{% include rest_setup %}
-{% include rest_url.md rest_path=rest_domain %}
+For domain information
 
+{% include api_post_list.html post_group='domain' %}

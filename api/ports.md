@@ -5,5 +5,6 @@ group:  API
 order:  6
 ---
 {% include JB/setup %}
-{% include rest_setup %}
-{% include rest_url.md rest_path=rest_port %}
+For information on ports
+
+{% include api_post_list.html post_group='ports' %}

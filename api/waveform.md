@@ -5,6 +5,6 @@ group:  API
 order:  4
 ---
 {% include JB/setup %}
-{% include rest_setup %}
-{% include rest_url.md rest_path=rest_waveform %}
-For waveforms
+Aka Applications (once running).
+
+{% include api_post_list.html post_group='waveform' %}
