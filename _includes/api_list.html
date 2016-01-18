@@ -1,0 +1,13 @@
+<div class="list-group">
+{% assign page_list = site.pages | sort:'order' %}
+{% for node in page_list %}
+  {% if "API" == node.group %}
+    {% if page.url == node.url %}
+      <a href="#" class="active list-group-item">{{ node.title }}</a>
+    {% else %}
+      <a href="{{ BASE_PATH }}{{node.url}}" class="list-group-item">{{node.title}}</a>
+    {% endif %}
+  {% endif %}
+{% endfor %}
+{% assign page_list = nil %}
+</div>

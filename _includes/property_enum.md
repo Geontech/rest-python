@@ -1,10 +1,10 @@
-{% highlight json %}
+{% highlight javascript %}
 {
     // other fields...
 
-    enumeratedPropertyID: {
-        value: 'ENUM_STRING',
-        enumerations: [
+    'propertyID': {
+        'value': 'ENUM_STRING',
+        'enumerations': [
             // A list of the possible enumerations as strings
         ]
     }
