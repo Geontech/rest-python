@@ -3,8 +3,12 @@
 permalink: /:categories/:year/:month/:day/:title 
 
 exclude: [".rvmrc", ".rbenv-version", "README.md", "HowToUpdate.md", "Rakefile", "changelog.md"]
-highlighter: pygments
+
 markdown: kramdown
+kramdown:
+  input: GFM
+
+highlighter: pygments
 
 # Themes are encouraged to use these universal variables 
 # so be sure to set them if your theme uses them.
@@ -131,3 +135,29 @@ JB :
   #   ./_includes/custom/[HELPER]
   # where [HELPER] is the name of the helper you are overriding.
   
+
+# REST Python API URLs
+rest_api:
+  base:           '/redhawk/rest'
+  redhawk:        '/redhawk/rest/redhawk'
+  events:         '/redhawk/rest/events'
+  domains:        '/redhawk/rest/domains'
+  domain:         '/redhawk/rest/domains/DOMAIN_NAME'
+  devicemanagers: '/redhawk/rest/domains/DOMAIN_NAME/deviceManagers'
+  devicemanager:  '/redhawk/rest/domains/DOMAIN_NAME/deviceManagers/DEVICEMANAGER_ID'
+  devices:        '/redhawk/rest/domains/DOMAIN_NAME/deviceManagers/DEVICEMANAGER_ID/devices'
+  device:         '/redhawk/rest/domains/DOMAIN_NAME/deviceManagers/DEVICEMANAGER_ID/devices/DEVICE_ID'
+  applications:   '/redhawk/rest/domains/DOMAIN_NAME/applications'
+  application:    '/redhawk/rest/domains/DOMAIN_NAME/applications/APPLICATION_ID'
+  components:     '/redhawk/rest/domains/DOMAIN_NAME/applications/APPLICATION_ID/components'
+  component:      '/redhawk/rest/domains/DOMAIN_NAME/applications/APPLICATION_ID/components/COMPONENT_ID'
+  ports:          'PARENT_PATH/ports'
+  port:           'PARENT_PATH/ports/PORT_NAME'
+  bulkio:         'PARENT_PATH/ports/PORT_NAME/bulkio'
+  fei_tuner:      'PARENT_PATH/ports/...Tuner...'
+  fei_rfinfo:     'PARENT_PATH/ports/RFInfo...'
+  fei_rfsource:   'PARENT_PATH/ports/RFSource...'
+  fei_gps:        'PARENT_PATH/ports/GPS...'
+  fei_navdata:    'PARENT_PATH/ports/NavData...'
+  properties:     'PARENT_PATH/properties'
+  property:       'PARENT_PATH/properties/PROPERTY_ID'
