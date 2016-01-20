@@ -67,7 +67,7 @@ JB :
   #   http://s3.amazonaws.com/yoursite/themes/watermelon
   #   /assets
   #
-  ASSET_PATH : false
+  ASSET_PATH : /assets/themes/geondocs
 
   # These paths are to the main pages Jekyll-Bootstrap ships with.
   # Some JB helpers refer to these paths; change them here if needed.
@@ -142,22 +142,22 @@ rest_api:
   redhawk:        '/redhawk/rest/redhawk'
   events:         '/redhawk/rest/events'
   domains:        '/redhawk/rest/domains'
-  domain:         '/redhawk/rest/domains/DOMAIN_NAME'
-  devicemanagers: '/redhawk/rest/domains/DOMAIN_NAME/deviceManagers'
-  devicemanager:  '/redhawk/rest/domains/DOMAIN_NAME/deviceManagers/DEVICEMANAGER_ID'
-  devices:        '/redhawk/rest/domains/DOMAIN_NAME/deviceManagers/DEVICEMANAGER_ID/devices'
-  device:         '/redhawk/rest/domains/DOMAIN_NAME/deviceManagers/DEVICEMANAGER_ID/devices/DEVICE_ID'
-  applications:   '/redhawk/rest/domains/DOMAIN_NAME/applications'
-  application:    '/redhawk/rest/domains/DOMAIN_NAME/applications/APPLICATION_ID'
-  components:     '/redhawk/rest/domains/DOMAIN_NAME/applications/APPLICATION_ID/components'
-  component:      '/redhawk/rest/domains/DOMAIN_NAME/applications/APPLICATION_ID/components/COMPONENT_ID'
-  ports:          'PARENT_PATH/ports'
-  port:           'PARENT_PATH/ports/PORT_NAME'
-  bulkio:         'PARENT_PATH/ports/PORT_NAME/bulkio'
-  fei_tuner:      'PARENT_PATH/ports/...Tuner...'
-  fei_rfinfo:     'PARENT_PATH/ports/RFInfo...'
-  fei_rfsource:   'PARENT_PATH/ports/RFSource...'
-  fei_gps:        'PARENT_PATH/ports/GPS...'
-  fei_navdata:    'PARENT_PATH/ports/NavData...'
-  properties:     'PARENT_PATH/properties'
-  property:       'PARENT_PATH/properties/PROPERTY_ID'
+  domain:         '/redhawk/rest/domains/:DOMAIN_NAME'
+  devicemanagers: '/redhawk/rest/domains/:DOMAIN_NAME/deviceManagers'
+  devicemanager:  '/redhawk/rest/domains/:DOMAIN_NAME/deviceManagers/:DEVICEMANAGER_ID'
+  devices:        '/redhawk/rest/domains/:DOMAIN_NAME/deviceManagers/:DEVICEMANAGER_ID/devices'
+  device:         '/redhawk/rest/domains/:DOMAIN_NAME/deviceManagers/:DEVICEMANAGER_ID/devices/:DEVICE_ID'
+  applications:   '/redhawk/rest/domains/:DOMAIN_NAME/applications'
+  application:    '/redhawk/rest/domains/:DOMAIN_NAME/applications/:APPLICATION_ID'
+  components:     '/redhawk/rest/domains/:DOMAIN_NAME/applications/:APPLICATION_ID/components'
+  component:      '/redhawk/rest/domains/:DOMAIN_NAME/applications/:APPLICATION_ID/components/:COMPONENT_ID'
+  ports:          '/:PARENT_PATH/ports'
+  port:           '/:PARENT_PATH/ports/:PORT_NAME'
+  bulkio:         '/:PARENT_PATH/ports/:PORT_NAME/bulkio'
+  fei_tuner:      '/:PARENT_PATH/ports/:...Tuner...'
+  fei_tuner_allocation: '/:PARENT_PATH/ports/:...Tuner.../:ALLOCATION_ID'
+  fei_rfinfo:     '/:PARENT_PATH/ports/:RFInfo...'
+  fei_rfsource:   '/:PARENT_PATH/ports/:RFSource...'
+  fei_gps:        '/:PARENT_PATH/ports/:GPS...'
+  fei_navdata:    '/:PARENT_PATH/ports/:NavData...'
+  properties:     '/:PARENT_PATH/properties'

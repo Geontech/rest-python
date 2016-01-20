@@ -1,0 +1,12 @@
+{% assign url_elements = site.rest_api[include.url] | split:"/" %}
+{% for el in url_elements %}
+{% if forloop.first == false %}
+  &#47;
+  {% if el contains ':' %}
+  <span class="text-danger">{{ el | remove: ':' }}</span>
+  {% else %}
+  {{ el }}
+  {% endif %}
+{% endif %}
+{% endfor %}
+{% assign url_elements = nil %}
