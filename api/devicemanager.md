@@ -5,6 +5,6 @@ group:  API
 order:  2
 ---
 {% include JB/setup %}
-This page is for Device Manager information
+The following information applies to Device Managers (a.k.a., Nodes).  One can use the [Event Channels](/api/eventchannels.html) to monitor when Device Managers join and leave the Domain.
 
 {% include api_post_list.html post_group='devicemanager' %}

@@ -5,6 +5,7 @@ group:  API
 order:  1
 ---
 {% include JB/setup %}
-For domain information
+
+The following methods can be used for discovering and interacting with a running REDHAWK Domain.
 
 {% include api_post_list.html post_group='domain' %}
