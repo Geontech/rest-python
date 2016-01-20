@@ -2,11 +2,12 @@
 {
     // other fields...
 
-    'propertyID': {
-        'value': 'ENUM_STRING',
-        'enumerations': [
-            // A list of the possible enumerations as strings
-        ]
+    "propertyID": {
+        "value":        0,
+        "enumerations": {
+            /* A map of the possible enumerations as strings */
+            "ENUM":     0,
+        }
     }
 }
 {% endhighlight %}
