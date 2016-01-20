@@ -98,3 +98,8 @@
   */
 }
 .sidebar-box { /* Figure something out... */ }
+
+div:target {
+  padding-top:  60px;
+  margin-top:  -60px;
+}

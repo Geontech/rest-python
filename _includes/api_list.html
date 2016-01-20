@@ -4,6 +4,12 @@
   {% if "API" == node.group %}
     {% if page.url == node.url %}
       <a href="#" class="active list-group-item">{{ node.title }}</a>
+      <div class="list-group list-group-item disabled">
+      {% assign posts = site.posts | where:'group', page.subgroup | sort:'order' %}
+      {% for p in posts %}
+        <a href="#subgrouppanel{{forloop.index}}" class="list-group-item">{{ p.title }}</a>
+      {% endfor %}
+      </div>
     {% else %}
       <a href="{{ BASE_PATH }}{{node.url}}" class="list-group-item">{{node.title}}</a>
     {% endif %}

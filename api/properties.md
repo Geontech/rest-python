@@ -1,8 +1,9 @@
 ---
-layout: api_page
-title:  Properties
-group:  API
-order:  7
+layout:     api_page
+title:      Properties
+group:      API
+subgroup:   properties
+order:      7
 ---
 {% include JB/setup %}
 
@@ -26,4 +27,4 @@ The rest-python server handles properties differently based on where one is at i
 **STRUCTSEQ**
 {% include property_structseq_value.md %}
 
-{% include api_post_list.html post_group='properties' %}
+{% include api_post_list.html %}

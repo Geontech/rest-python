@@ -1,8 +1,9 @@
 ---
-layout: api_page
-title:  Waveform
-group:  API
-order:  4
+layout:     api_page
+title:      Waveform
+group:      API
+subgroup:   waveform
+order:      4
 ---
 {% include JB/setup %}
-{% include api_post_list.html post_group='waveform' %}
+{% include api_post_list.html %}

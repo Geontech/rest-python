@@ -1,5 +1,6 @@
-{% assign posts = site.posts | where:'group', include.post_group | sort:'order' %}
+{% assign posts = site.posts | where:'group', page.subgroup | sort:'order' %}
 {% for post in posts %}
+<div  id="subgrouppanel{{forloop.index}}">
 <div class="panel panel-default">
   <div class="panel-heading">
     {% for tag in post.tags %}
@@ -13,6 +14,7 @@
   <div class="panel-body">
     {{ post.content | markdownify }}
   </div>
+</div>
 </div>
 {% endfor %}
 {% assign posts=nil %}
