@@ -47,26 +47,25 @@
 
         <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
           <ul class="nav navbar-nav">
-            <li class="dropdown">
-              <a class="dropdown-toggle" data-toggle="dropdown" href="#" id="api">API Menu <span class="caret"></span></a>
-              <ul class="dropdown-menu" aria-labelledby="api">
-                {% assign pages_list = site.pages | sort:"order" %}
-                {% assign group = 'API' %}
-                {% include JB/pages_list %}
-              </ul>
-            </li>
+            {% capture nav_menu_content %}{% include nav_menu.html %}{% endcapture %}
+            {% unless nav_menu_content contains "Liquid error" %}
+              {% include nav_menu.html %}
+            {% endunless %}
+            
             {% assign pages_list = site.pages %}
             {% assign group = 'navigation' %}
             {% include JB/pages_list %}
           </ul>
 
           <!-- Download link -->
+          {% if site.download_url != nil %}
           <ul class="nav navbar-nav navbar-right">
             <li class="divider"></li>
             <li>
-              <a href="https://github.com/Geontech/rest-python/tarball/master">Download</a>
+              <a href="site.download_url">Download</a>
             </li>
           </ul>
+          {% endif %}
         </div>
       </div>
     </nav>
