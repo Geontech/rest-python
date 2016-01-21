@@ -19,6 +19,7 @@ author :
   name : Geon Technologies
   email : redhawk@geontech.com
   github : geontech
+download_url: https://github.com/Geontech/rest-python/tarball/master
 
 # The production_url is only used when full-domain names are needed
 # such as sitemap.txt 
