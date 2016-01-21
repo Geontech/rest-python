@@ -19,6 +19,7 @@
 # along with this program.  If not, see http://www.gnu.org/licenses/.
 #
 import os
+import time
 
 from rest.domain import DomainInfo, DomainProperties
 from rest.application import Applications
@@ -33,7 +34,7 @@ from rest.event_handler import EventHandler
 import tornado.httpserver
 import tornado.web
 import tornado.websocket
-from tornado import ioloop
+from tornado import ioloop, gen
 
 from model.redhawk import Redhawk
 
@@ -73,10 +74,12 @@ class Application(tornado.web.Application):
         handlers = [
             (r"/apps/(.*)/$", IndexHandler),
             (r"/apps/(.*)", tornado.web.StaticFileHandler, {"path": os.path.join(cwd, "apps")}),
+            (r"/client/(.*)/$", IndexHandler),
             (r"/client/(.*)", tornado.web.StaticFileHandler, {"path": os.path.join(cwd, "client")}),
 
             # Top-level Event Handler REDHAWK status channel and event channel system
             # The event handler sorts out what to do for us.
+            (_BASE_URL + _LIST + r"$", BaseInfo),
             (_BASE_URL + r'/(redhawk|events)', EventHandler, dict(redhawk=redhawk, _ioloop=_ioloop)),
 
             # Domains, wild guess on the eventChannels one.
@@ -143,12 +146,26 @@ class IndexHandler(tornado.web.RequestHandler):
     def get(self, path):
         self.render("apps/"+path+"/index.html")
 
+class BaseInfo(tornado.web.RequestHandler):
+    @tornado.web.asynchronous
+    @gen.engine
+    def get(self, *args):
+        self.write("<h1>The rest-python server is running!</h1>")
+        self.flush()
+        yield gen.Task(ioloop.IOLoop.instance().add_timeout, time.time()+1)
+        self.write("<p>Now try this URL: {0}</p>".format(_DOMAIN_PATH))
+        self.finish()
 
 def main():
     tornado.options.parse_command_line()
     application = Application(debug=options.debug)
     application.listen(options.port)
-    ioloop.IOLoop.instance().start()
+
+    try:
+        ioloop.IOLoop.instance().start()
+    except KeyboardInterrupt:
+        pass
+        
 
 if __name__ == '__main__':
     main()
