@@ -53,17 +53,18 @@ class PropertyHelper(object):
     def _property_set(properties):
         prop_dict = []
         for prop in properties:
+            # BugFix: write-only props cannot be queried, here's a way to feed
+            # a non-destructive value in place.
+            val = None if ('writeonly' == prop.mode or 'message' in prop.kinds) else prop.queryValue()
+
             if prop.type not in ['struct', 'structSeq']:
-                if prop.type == 'sequence':
-                    prop_type = 'simpleSeq' # FIXME: Maybe don't rename??
+                if type(val) == list:
+                    prop_type = 'simpleSeq'
                 else:
                     prop_type = 'simple'
             else:
                 prop_type = prop.type
 
-            # BugFix: write-only props cannot be queried, here's a way to feed
-            # a non-destructive value in place.
-            val = None if ('writeonly' == prop.mode or 'message' in prop.kinds) else prop.queryValue()
             prop_json = {
                 'id': prop.id,
                 'name': prop.clean_name,
