@@ -72,20 +72,28 @@ class EventHelper(object):
         }
 
     @staticmethod
-    # event is a python dictionary, the result of from_any() in GenericEventConsumer.
     def format_event(event):
-        for k in event:
-            if type(k) == dict:
-                EventHelper.format_event(k)
-            elif 'sourceIOR' == k:
-                event[k] = 'OBJECT_REFERENCE'
-            elif k in EventHelper.ENUM_MAP:
-                v = event[k]
-                event[k] = {
-                    'value'        : str(v),
-                    'enumerations' : EventHelper.ENUM_MAP[k]
+        formattedEvent = {}
+
+        if type(event) == dict:
+            for k, v in event.iteritems():
+                if k in EventHelper.ENUM_MAP:
+                    formattedEvent[k] = {
+                        'value'         : str(v),
+                        'enumerations'  : EventHelper.ENUM_MAP[k]
                     }
-        return event
+                elif type(v) == list:
+                    formattedEvent[k] = []
+                    for item in v:
+                        formattedEvent[k].append(EventHelper.format_event(item))
+                else:
+                    formattedEvent[k] = EventHelper.format_event(v)
+        elif str(type(event)) == "<type 'instance'>":
+            formattedEvent = str(event)
+        else:
+            formattedEvent = event
+
+        return formattedEvent
 
 
 class TopicConsumer (GenericEventConsumer):
@@ -110,8 +118,13 @@ class TopicConsumer (GenericEventConsumer):
             except WebSocketClosedError as e:
                 return False
 
-        message = EventHelper.format_event(event)
-        self.__listeners[:] = [cb for cb in self.__listeners if attempt(cb, message)]
+        if type(event) == list:
+            for k in event:
+                self.deliver(k, typecode)
+        else:
+            message = EventHelper.format_event(event)
+            self.__listeners[:] = [cb for cb in self.__listeners if attempt(cb, message)]
+
 
     def add_listener(self, callbackFn):
         if callbackFn not in self.__listeners:
