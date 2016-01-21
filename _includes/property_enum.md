@@ -1,13 +1,15 @@
 {% highlight javascript %}
 {
-    // other fields...
+    /* other property fields, etc. */
+    "id":   "propertyId",
 
-    "propertyID": {
-        "value":        0,
-        "enumerations": {
-            /* A map of the possible enumerations as strings */
-            "ENUM":     0,
-        }
+    /* type is long, ulong, etc. */
+    "type":         "long",
+    "value":        0,
+
+    /* A map of the possible enumerations as id-value pairs */ 
+    "enumerations": {
+        "ENUM":     0,
     }
 }
 {% endhighlight %}

@@ -1,7 +1,7 @@
 {% highlight javascript %}
 {
     /* scaType: simple */
-    /* If type is string, otherwise it may be a number, boolean, etc. */
-    "value": "someValue"
+    "type":  "string",      /* or long, double, ulong, etc. */
+    "value": "someValue"    /* representation matches type */
 }
 {% endhighlight %}
