@@ -65,10 +65,10 @@ class ApplicationReleaseError(Exception):
 # Helper class to convert the enumeration fields to something JSON serializable
 class EventHelper(object):
     ENUM_MAP = {
-        'sourceCategory'      : [str(i) for i in StandardEvent.SourceCategoryType._items],
-        'stateChangeCategory' : [str(i) for i in StandardEvent.StateChangeCategoryType._items],
-        'stateChangeFrom'     : [str(i) for i in StandardEvent.StateChangeType._items],
-        'stateChangeTo'       : [str(i) for i in StandardEvent.StateChangeType._items],
+        'sourceCategory'      : dict([(str(val), idx) for idx, val in enumerate(StandardEvent.SourceCategoryType._items)]),
+        'stateChangeCategory' : dict([(str(val), idx) for idx, val in enumerate(StandardEvent.StateChangeCategoryType._items)]),
+        'stateChangeFrom'     : dict([(str(val), idx) for idx, val in enumerate(StandardEvent.StateChangeType._items)]),
+        'stateChangeTo'       : dict([(str(val), idx) for idx, val in enumerate(StandardEvent.StateChangeType._items)]),
         }
 
     @staticmethod
