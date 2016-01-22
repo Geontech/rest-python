@@ -68,9 +68,9 @@ class DeviceProperties(JsonHandler, PropertyHelper):
             'deallocate'    : self.redhawk.device_deallocate
         }
         data = json.loads(self.request.body)
-        changes = {}
-        for p in data['properties']:
-            changes[p['id']] = p['value']
+        json_props = data.get('properties', [])
+        changes = self.unformat_properties(json_props)
+        
         cb = PUT_METHODS.get(data['method'], None)
         try: 
             r, message = yield cb(domainName, managerId, deviceId, changes)

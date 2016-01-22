@@ -25,11 +25,12 @@ PropertyHelper -- Convert CORBA and RH Sandbox Properties into dictionaries (mor
 PortHelper -- Convert Port information into dict
 """
 
-from ossie.utils.prop_helpers import Property
+from ossie.utils.prop_helpers import Property, simpleProperty, structProperty, structSequenceProperty, sequenceProperty
 
 
 class PropertyHelper(object):
 
+    """ For going from REDHAWK to JSON """
     @staticmethod
     def format_properties(properties):
         if not properties:
@@ -41,47 +42,95 @@ class PropertyHelper(object):
 
     @staticmethod
     def _corba_properties(properties):
-        prop_dict = []
+        prop_list = []
         for prop in properties:
             ret = PropertyHelper.__any(prop.value)
             ret['id'] = prop.id
-            prop_dict.append(ret)
+            prop_list.append(ret)
 
-        return prop_dict
+        return prop_list
 
     @staticmethod
     def _property_set(properties):
-        prop_dict = []
-        for prop in properties:
-            # BugFix: write-only props cannot be queried, here's a way to feed
-            # a non-destructive value in place.
-            val = None if ('writeonly' == prop.mode or 'message' in prop.kinds) else prop.queryValue()
+        def _handle_simple(prop):
+            try:
+                val = prop.queryValue()
+            except:
+                val = None
 
-            if prop.type not in ['struct', 'structSeq']:
-                if type(val) == list:
-                    prop_type = 'simpleSeq'
-                else:
-                    prop_type = 'simple'
+            if hasattr(prop, 'clean_name'):
+                clean_name = prop.clean_name
             else:
-                prop_type = prop.type
+                clean_name = prop.id.split('::')[-1]
 
-            prop_json = {
-                'id': prop.id,
-                'name': prop.clean_name,
-                'value': val,
-                'scaType': prop_type,
-                'mode': prop.mode,
-                'kinds': prop.kinds
+            p_dict = {
+                'id'        : prop.id,
+                'name'      : clean_name,
+                'scaType'   : 'simple',
+                'value'     : val,
+                'type'      : prop.type,
+                'mode'      : prop.mode,
+                'kinds'     : prop.kinds
             }
 
-            if prop_type == 'simple':
-                prop_json['type'] = prop.type;
+            if hasattr(prop, '_enums') and prop._enums:
+                p_dict['enumerations'] = prop._enums
+            return p_dict
 
-            if '_enums' in dir(prop) and prop._enums:
-                prop_json['enumerations'] = prop._enums
+        def _handle_simpleseq(prop):
+            p_dict = _handle_simple(prop)
+            p_dict['scaType'] = 'simpleSeq'
+            return p_dict
 
-            prop_dict.append(prop_json)
-        return prop_dict
+        def _handle_struct(prop):
+            p_dict = _handle_simple(prop)
+            p_dict.pop('type', None)
+            p_dict['value'] = []
+            for _, m in prop.members.iteritems():
+                m_dict = _handle_simple(m)
+                p_dict['value'].append( m_dict )
+            p_dict['scaType'] = 'struct'
+            return p_dict
+
+        def _handle_structseq(prop):
+            p_dict = _handle_simple(prop)
+            p_dict['value'] = []
+            for idx, _ in enumerate(prop):
+                element_dict = _handle_struct(prop[idx])
+                p_dict['value'].append( element_dict )
+            p_dict['scaType'] = 'structSeq'
+            return p_dict
+
+        prop_list = []
+        for prop in properties:
+            if type(prop) == simpleProperty:
+                prop_list.append( _handle_simple(prop) )
+            elif type(prop) == sequenceProperty:
+                prop_list.append( _handle_simpleseq(prop) )
+            elif type(prop) == structProperty:
+                prop_list.append( _handle_struct(prop) )
+            elif type(prop) == structSequenceProperty:
+                prop_list.append( _handle_structseq(prop) )
+        return prop_list
+
+    """ Going from JSON to REDHAWK Properties """
+    @staticmethod
+    def unformat_properties(properties):
+        def _handle_value(val):
+            out_val = val
+            if type(val) == list:
+                out_val = []
+                for v in val:
+                    if type(v) == dict:
+                        out_val.append({v['id']: _handle_value(v['value'])})
+                    else:
+                        out_val.append(v)
+            return out_val
+
+        props_dict = {}
+        for prop in properties:
+            props_dict[prop['id']] = _handle_value(prop['value'])
+        return props_dict
 
     ###############################################
     # Private

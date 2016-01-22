@@ -64,9 +64,7 @@ class ComponentProperties(JsonHandler, PropertyHelper):
     @gen.coroutine
     def put(self, domain, application, component):
         data = json.loads(self.request.body)
-
-        changes = {}
-        for p in data['properties']:
-            changes[p['id']] = p['value']
+        json_props = data.get('properties', [])
+        changes = self.unformat_properties(json_props)
 
         yield self.redhawk.component_configure(domain, application, component, changes)

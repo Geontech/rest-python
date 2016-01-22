@@ -103,7 +103,8 @@ class FEITunerHandler(JsonHandler, FEIHelper):
         port = self.find_port(int_name, dev)
         # FEITunerHandler supports 1 PUT: Tune.
         try:
-            for prop in data['properties']:
+            props = PropertyHelper.unformat_properties(data['properties'])
+            for prop in props:
                 self.set_attribute(port, str(allocation_id), prop['id'], prop['value'])
         except Exception as e:
             self._handle_request_exception(e)
