@@ -122,7 +122,9 @@ class PropertyHelper(object):
                 out_val = []
                 for v in val:
                     if type(v) == dict:
-                        out_val.append({v['id']: _handle_value(v['value'])})
+                        if type(out_val) == list:
+                            out_val = {} # Change to map
+                        out_val.update({v['id']: _handle_value(v['value'])})
                     else:
                         out_val.append(v)
             return out_val
