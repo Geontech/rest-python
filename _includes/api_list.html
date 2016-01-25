@@ -1,0 +1,24 @@
+<div class="list-group">
+{% assign page_list = site.pages | sort:'order' %}
+{% for node in page_list %}
+  {% if "API" == node.group %}
+    {% if page.url == node.url %}
+      <a href="#" class="active list-group-item">{{ node.title }}</a>
+      {% assign posts = site.posts | where:'group', page.subgroup | sort:'order' %}
+      {% capture posts_size %}{{ posts | size }}{% endcapture %}
+      {% if posts_size != '0' %}
+          <div class="list-group list-group-item disabled">
+          {% for p in posts %}
+            <a href="#subgrouppanel{{forloop.index}}" class="list-group-item">{{ p.title }}</a>
+          {% endfor %}
+          </div>
+      {% endif %}
+      {% assign posts_size = nil %}
+      {% assign posts = nil %}
+    {% else %}
+      <a href="{{ BASE_PATH }}{{node.url}}" class="list-group-item">{{node.title}}</a>
+    {% endif %}
+  {% endif %}
+{% endfor %}
+{% assign page_list = nil %}
+</div>

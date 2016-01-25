@@ -1,0 +1,8 @@
+<li class="dropdown">
+  <a class="dropdown-toggle" data-toggle="dropdown" href="#" id="api">API Menu <span class="caret"></span></a>
+  <ul class="dropdown-menu" aria-labelledby="api">
+    {% assign pages_list = site.pages | sort:"order" %}
+    {% assign group = 'API' %}
+    {% include JB/pages_list %}
+  </ul>
+</li>
