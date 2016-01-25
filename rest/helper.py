@@ -124,14 +124,14 @@ class PropertyHelper(object):
                     if type(v) == dict:
                         if type(out_val) == list:
                             out_val = {} # Change to map
-                        out_val.update({v['id']: _handle_value(v['value'])})
+                        out_val.update({v['id']: _handle_value(v.get('value', None))})
                     else:
                         out_val.append(v)
             return out_val
 
         props_dict = {}
         for prop in properties:
-            props_dict[prop['id']] = _handle_value(prop['value'])
+            props_dict[prop['id']] = _handle_value(prop.get('value', None))
         return props_dict
 
     ###############################################
