@@ -1,6 +1,6 @@
 {% highlight javascript %}
 {
-    /* scaType: structseq */
+    /* scaType: structSeq */
     "value": [ /* Each as a struct */ ],
 }
 {% endhighlight %}

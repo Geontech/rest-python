@@ -1,6 +1,6 @@
 {% highlight javascript %}
 {
-    /* scaType: simpleseq */
+    /* scaType: simpleSeq */
     "type":  "string",      /* or long, double, ulong, etc. */
     value: [
         "value1",
