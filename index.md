@@ -8,7 +8,7 @@ Welcome to the documentation for [Geon Technology's](http://www.geontech.com) fo
 
 Our goal for extending the [REDHAWK SDR](http://github.com/redhawksdr/rest-python) version was to stabilize and add as many features as possible to better support a generic interface to a [REDHAWK SDR](http://www.redhawksdr.org) system using open and modern web technologies of the end-user's choosing.  These features include both observing and controlling the systems within the Domain.  In essence: the aim is for an easy-to-use backend for interfacing with other systems or developing light-weight user interfaces.
 
->**NOTE:** At this time, the most recent version of REDHAWK that has been tested with rest-python is 1.9.0 through 1.10.2.
+>**NOTE:** This version of rest-python has been tested against REDHAWK 1.9.0 through 2.0.0.  In an upcoming release, previous versions will no longer be updated as features exclusive to REDHAWK 2.0 will soon be added.
 
 ## Installation
 
