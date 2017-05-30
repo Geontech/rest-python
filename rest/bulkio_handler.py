@@ -28,47 +28,36 @@ from omniORB import CORBA
 from tornado import ioloop, gen
 from tornado import websocket
 
+import json
 import numpy
 
 from model.domain import Domain, ResourceNotFound
 from asyncport import AsyncPort
 
+from crossdomainsocket import CrossDomainSockets
 
-def _floats2bin(flist):
-    """
-        Converts a list of python floating point values
-        to a packed array of IEEE 754 32 bit floating point
-    """
-    return numpy.array(flist).astype('float32').tostring()
+def enum(**enums):
+    return type('Enum', (), enums)
 
-
-def _doubles2bin(flist):
-    """
-        Converts a list of python floating point values
-        to a packed array of IEEE 754 64 bit floating point
-    """
-    return numpy.array(flist).astype('float64').tostring()
+# Control messages are a dictionary of type and value.  The type should be
+# one of these enumerations.
+# E.g.:     ControlMessage = { 'type': 0, 'value': 1024 }
+ControlEnum = enum(MaxWidth=0, MaxPPS=1)
 
 
-def _pass_through(flist):
-    return flist
-
-
-class BulkIOWebsocketHandler(websocket.WebSocketHandler):
-
-    data_conversion_map = {
-        'dataFloat':  _floats2bin,
-        'dataDouble': _doubles2bin,
-        'dataOctet': _pass_through,
-        'dataShort': _pass_through  # FIXME: This definitely didn't work with a dataShort port..."got type <list>" exception
-    }
-
+class BulkIOWebsocketHandler(CrossDomainSockets):
     def initialize(self, kind, redhawk=None, _ioloop=None):
         self.kind = kind
         self.redhawk = redhawk
         if not _ioloop:
             _ioloop = ioloop.IOLoop.current()
         self._ioloop = _ioloop
+
+        # For on-the-fly per-client decimation
+        self._outputWidth = None
+
+        # Map of SRIs seen on this port.
+        self._SRIs = dict()
 
     @gen.coroutine
     def open(self, *args):
@@ -84,17 +73,21 @@ class BulkIOWebsocketHandler(websocket.WebSocketHandler):
                         namespace = p._using.nameSpace
 
                         if namespace == 'BULKIO':
-                            self.port = obj.getPort(str(path[0]))
+                            self.port = p.ref
                             logging.debug("Found port %s", self.port)
-
-                            self.converter = self.data_conversion_map[data_type]
 
                             bulkio_poa = getattr(BULKIO__POA, data_type)
                             logging.debug(bulkio_poa)
 
                             self.async_port = AsyncPort(bulkio_poa, self._pushSRI, self._pushPacket)
-                            self._portname = 'myport%s' % id(self)
-                            self.port.connectPort(self.async_port.getPort(), self._portname)
+                            self._portname = 'rest-python-%s' % id(self)
+
+                            if len(path) == 3:
+                                self._connectionId = path[2][1:]
+                            else:
+                                self._connectionId = None
+
+                            self.port.connectPort(self.async_port.getPort(), self._portname, self._connectionId)
 
                             break
                         else:
@@ -113,36 +106,87 @@ class BulkIOWebsocketHandler(websocket.WebSocketHandler):
             self.close()
 
     def on_message(self, message):
-        logging.debug('stream message[%d]: %s', len(message), message)
+        ctrl = json.loads(message)
+
+        if (ctrl.type == Control.MaxWidth):
+            if 0 < ctrl.value:
+                self._outputWidth = ctrl.value
+                logging.info('Decimation requested to {0} samples'.format(ctrl.value))
+            else:
+                self._outputWidth = None
+                logging.info('Decimation disabled')
+
+        elif (ctrl.type == Control.MaxPPS):
+            logging.warning('Packets per second (PPS) not implemented yet.')
 
     def on_close(self):
         logging.debug('Stream CLOSE')
         try:
-            self.port.disconnectPort(self._portname)
+            self.port.disconnectPort(self._portname, self._connectionId)
         except CORBA.TRANSIENT:
             pass 
         except Exception, e:
             logging.exception('Error disconnecting port %s' % self._portname)
 
     def _pushSRI(self, SRI):
-        self._ioloop.add_callback(self.write_message, 
-            dict(hversion=SRI.hversion,
-                xstart=SRI.xstart,
-                xdelta=SRI.xdelta,
-                xunits=SRI.xunits,
-                subsize=SRI.subsize,
-                ystart=SRI.ystart,
-                ydelta=SRI.ydelta,
-                yunits=SRI.yunits,
-                mode=SRI.mode,
-                streamID=SRI.streamID,
-                blocking=SRI.blocking,
-                keywords=dict(((kw.id, kw.value.value()) for kw in SRI.keywords))))
+        newSri = dict(
+            hversion=SRI.hversion,
+            xstart=SRI.xstart,
+            xdelta=SRI.xdelta,
+            xunits=SRI.xunits,
+            subsize=SRI.subsize,
+            ystart=SRI.ystart,
+            ydelta=SRI.ydelta,
+            yunits=SRI.yunits,
+            mode=SRI.mode,
+            streamID=SRI.streamID,
+            blocking=SRI.blocking,
+            keywords=dict(((kw.id, kw.value.value()) for kw in SRI.keywords)))
+        self._updateSRIFromDict(newSri)
+
+    def _getSRI(self, streamID):
+        return self._SRIs.get(streamID, (None, True))
+
+    def _updateSRIFromDict(self, newSri):
+        sri, changed = self._getSRI(newSri['streamID'])
+        if sri is not None:
+            changed = compareSRI(sri, newSri)
+        self._SRIs[sri.streamID] = (newSri, changed)
 
     def _pushPacket(self, data, ts, EOS, stream_id):
+        data = numpy.array(data)
 
-        # FIXME: need to write ts, EOS and stream id
-        self._ioloop.add_callback(self.write_message, self.converter(data), binary=True)
+        if None == self._outputWidth:
+            self._outputWidth = data.size 
+
+        # Get SRI and modify if necessary (from decimation)
+        sri, changed = self._getSRI(stream_id)
+        outSri = dict.copy(sri)
+        if 0 < data.size and data.size != self._outputWidth:
+            D, M = divmod(data.size, self._outputWidth)
+            if 0 == M and 1 < D:
+                # Mean decimate
+                data = data.reshape(-1, D).mean(axis=1)
+                outSri.xdelta = sri.xdelta * D
+                changed = True
+            else:
+                # Restore...invalid setting.
+                # TODO: Support interp+decimate rather than just
+                #       neighbor-mean
+                logging.warning('Interpolate+decimate not supported.  Restoring original output width.')
+                self._outputWidth = None
+
+        # Tack on SRI, Package, Deliver.
+        packet = dict(
+            streamID   = stream_id,
+            T          = ts,
+            EOS        = EOS,
+            sriChanged = changed,
+            SRI        = outSri,
+            type       = self.port._using.name,
+            dataBuffer = data
+            )
+        self._ioloop.add_callback(self.write_message, packet)
 
     def write_message(self, *args, **ioargs):
         # hide WebSocketClosedError because it's very likely
@@ -150,3 +194,33 @@ class BulkIOWebsocketHandler(websocket.WebSocketHandler):
             super(BulkIOWebsocketHandler, self).write_message(*args, **ioargs)
         except websocket.WebSocketClosedError:
             logging.debug('Received WebSocketClosedError. Ignoring')
+            self.close()
+
+# Imported from ossie.utils sb
+# TODO: Handle keywords JSON strings
+def compareSRI(a, b):
+    if a.hversion != b.hversion:
+        return False
+    if a.xstart != b.xstart:
+        return False
+    if a.xdelta != b.xdelta:
+        return False
+    if a.xunits != b.xunits:
+        return False
+    if a.subsize != b.subsize:
+        return False
+    if a.ystart != b.ystart:
+        return False
+    if a.ydelta != b.ydelta:
+        return False
+    if a.yunits != b.yunits:
+        return False
+    if a.mode != b.mode:
+        return False
+    if a.streamID != b.streamID:
+        return False
+    if a.blocking != b.blocking:
+        return False
+    if a.keywords != b.keywords:
+        return False
+    return True

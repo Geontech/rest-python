@@ -2,3 +2,4 @@
 apps/*/
 .virtualenv/
 bower_components
+*.*~

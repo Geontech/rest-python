@@ -46,7 +46,7 @@ class Applications(JsonHandler, PropertyHelper, PortHelper):
                 'started': app._get_started(),
                 'components': comps,
                 'ports': self.format_ports(app.ports),
-                'properties': self.format_properties(app._properties)
+                'properties': self.format_properties(app._externalProps, app.query([]))
             }
         else:
             apps = yield self.redhawk.get_application_list(domain_name)

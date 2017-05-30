@@ -19,9 +19,13 @@
 #
 import logging
 from tornado import ioloop, websocket
+from rest.crossdomainsocket import CrossDomainSockets
+from handler import JsonHandler
+from helper import PropertyHelper
 import json
+from tornado import gen
 
-class EventHandler(websocket.WebSocketHandler):
+class EventHandler(CrossDomainSockets):
 
     def initialize(self, redhawk, _ioloop=None):
         self.redhawk = redhawk
@@ -85,3 +89,20 @@ class EventHandler(websocket.WebSocketHandler):
             super(EventHandler, self).write_message(*args, **ioargs)
         except websocket.WebSocketClosedError:
             logging.debug('Received WebSocketClosedError. Ignoring')
+
+
+class EventChannelHandler(JsonHandler, PropertyHelper):
+    @gen.coroutine
+    def get(self, number=150, *args):
+        try:
+            number = int(float(number))
+        except:
+            number = 150
+        eventChannels = yield self.redhawk.get_all_event_channels(number)
+        eventChannels = list(set(eventChannels))
+        channels = {'eventChannels':eventChannels}
+        self._render_json(channels)
+
+
+        
+

@@ -93,6 +93,20 @@ class Redhawk(object):
     def rm_event_listener(self, callbackFn, domain_name=None, topic=None):
         if domain_name in self.__domains:
             self.__domains[domain_name].rm_event_listener(callbackFn, topic)
+
+
+    @background_task
+    def get_all_event_channels(self, number):
+        eventChannels = []
+        for i in self.__domains.values():
+            eventChannels.extend(i.event_channels(number))
+        eventChannelNames = []
+        for i in eventChannels:
+            eventChannelNames.append(i.channel_name)
+        return eventChannelNames
+
+
+
             
     ##############################
     # DOMAIN
@@ -114,7 +128,35 @@ class Redhawk(object):
     @background_task
     def get_domain_event_channels(self, domain_name):
         dom = self._get_domain(domain_name)
-        return dom.event_channels();
+        eventChannels = dom.event_channels(150)
+        eventChannelNames = []
+        for i in eventChannels:
+            eventChannelNames.append(i.channel_name)
+        return eventChannelNames
+
+    ##############################
+    # ALLOCATION
+
+    @background_task
+    def allocate(self, domain_name, allocation_id, device_ids, properties, source_id):
+        dom = self._get_domain(domain_name)
+        props = props_from_dict(Redhawk._clean_property(properties))
+        return dom.allocate(allocation_id, device_ids, props, source_id)
+
+    @background_task
+    def get_allocation(self, domain_name, allocation_id):
+        dom = self._get_domain(domain_name)
+        return dom.find_allocation(allocation_id)
+
+    @background_task
+    def get_allocation_list(self, domain_name):
+        dom = self._get_domain(domain_name)
+        return dom.allocations()
+
+    @background_task
+    def deallocate(self, domain_name, allocation_ids):
+        dom = self._get_domain(domain_name)
+        return dom.deallocate(allocation_ids)
 
     ##############################
     # APPLICATION
@@ -247,6 +289,40 @@ class Redhawk(object):
             return dev.deallocateCapacity(changes), ''
         except Exception as e:
             return False, "{0}".format(e);
+
+    ##############################
+    # FILESYSTEM
+
+    @background_task
+    def append(self, domain_name, path, contents):
+        dom = self._get_domain(domain_name)
+        return dom.append(path, contents)
+    
+    @background_task
+    def create(self, domain_name, path, contents, read_only):
+        dom = self._get_domain(domain_name)
+        return dom.create(path, contents, read_only)
+
+    @background_task
+    def get_path(self, domain_name, path):
+        dom = self._get_domain(domain_name)
+        pathObject = dom.get_path(path)
+        return pathObject
+
+    @background_task
+    def move(self, domain_name, from_path, to_path, keep_original):
+        dom = self._get_domain(domain_name)
+        return dom.move(from_path, to_path, keep_original)
+
+    @background_task
+    def remove(self, domain_name, path):
+        dom = self._get_domain(domain_name)
+        return dom.remove(path)
+
+    @background_task
+    def replace(self, domain_name, path, contents):
+        dom = self._get_domain(domain_name)
+        return dom.replace(path, contents)
 
     ##############################
     # SERVICE

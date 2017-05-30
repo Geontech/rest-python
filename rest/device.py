@@ -42,7 +42,7 @@ class Devices(JsonHandler, PropertyHelper, PortHelper):
                 'id': dev._id,
                 'started': dev._get_started(),
                 'ports': self.format_ports(dev.ports),
-                'properties': self.format_properties(dev._properties)
+                'properties': self.format_properties(dev._properties, dev.query([]))
             }
         else:
             devices = yield self.redhawk.get_device_list(domainName, managerId)
@@ -57,7 +57,7 @@ class DeviceProperties(JsonHandler, PropertyHelper):
         dev = yield self.redhawk.get_device(domainName, managerId, deviceId)
 
         self._render_json({
-            'properties': self.format_properties(dev._properties)
+            'properties': self.format_properties(dev._properties, dev.query([]))
         })
     
     @gen.coroutine
@@ -81,3 +81,4 @@ class DeviceProperties(JsonHandler, PropertyHelper):
 
         except Exception as e:
             self._render_json({ 'method': data['method'], 'status': False, 'message': "{0}".format(e) })
+

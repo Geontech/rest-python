@@ -25,10 +25,11 @@ JsonHandler -- Handle generic functions of a json rest interface
 """
 import logging
 import tornado.web
+from crossdomain import CrossDomains
 from model.domain import ResourceNotFound
 
 
-class JsonHandler(tornado.web.RequestHandler):
+class JsonHandler(CrossDomains):
     redhawk = None
 
     def initialize(self, redhawk):

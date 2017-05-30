@@ -38,9 +38,7 @@ class DeviceManagers(JsonHandler, PropertyHelper, PortHelper):
             dev_mgr = yield self.redhawk.get_device_manager(domain_name, dev_mgr_id)
             services = yield self.redhawk.get_service_list(domain_name, dev_mgr_id)
             devices = yield self.redhawk.get_device_list(domain_name, dev_mgr_id)
-
-            # TODO: Find out why _properties is not in device manager
-            prop_dict = self.format_properties(dev_mgr.query([]))
+            prop_dict = self.format_properties(dev_mgr._properties, dev_mgr.query([]))
 
             info = {
                 'name': dev_mgr.name,

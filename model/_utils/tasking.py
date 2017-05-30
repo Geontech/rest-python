@@ -21,14 +21,17 @@ from functools import wraps, partial
 from tornado import gen, concurrent
 from tornado import ioloop
 
-# Suppressed known DeprecationWarning for the futures backport
-import warnings, exceptions
-warnings.filterwarnings("ignore", "The futures package has been deprecated.*", exceptions.DeprecationWarning, "futures")
-import futures
-
 import logging
 import sys
-from futures import ThreadPoolExecutor
+
+# Suppressed known DeprecationWarning for the futures backport
+try: 
+    import warnings, exceptions
+    warnings.filterwarnings("ignore", "The futures package has been deprecated.*", exceptions.DeprecationWarning, "futures")
+    import futures
+    from futures import ThreadPoolExecutor
+except:
+    from concurrent.futures import ThreadPoolExecutor
 
 EXECUTOR = ThreadPoolExecutor(100)
 

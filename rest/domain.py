@@ -38,17 +38,21 @@ class DomainInfo(JsonHandler, PropertyHelper):
             event_channels = yield self.redhawk.get_domain_event_channels(domain_name)
             if not args:
                 dom_info = yield self.redhawk.get_domain_info(domain_name)
-                properties = yield self.redhawk.get_domain_properties(domain_name)
+                propertySet = yield self.redhawk.get_domain_properties(domain_name)
                 apps = yield self.redhawk.get_application_list(domain_name)
                 device_managers = yield self.redhawk.get_device_manager_list(domain_name)
+                allocations = yield self.redhawk.get_allocation_list(domain_name)
+                fs = yield self.redhawk.get_path(domain_name, '')
 
                 info = {
                     'id': dom_info._get_identifier(),
                     'name': dom_info.name,
-                    'properties': self.format_properties(properties),
+                    'properties': self.format_properties(propertySet, dom_info.query([])),
                     'eventChannels': event_channels,
                     'applications': apps,
-                    'deviceManagers': device_managers
+                    'deviceManagers': device_managers,
+                    'allocations': allocations,
+                    'fs': fs
                 }
 
         else:
@@ -60,8 +64,9 @@ class DomainInfo(JsonHandler, PropertyHelper):
 class DomainProperties(JsonHandler, PropertyHelper):
     @gen.coroutine
     def get(self, domain_name, prop_name=None):
-        properties = yield self.redhawk.get_domain_properties(domain_name)
-        info = self.format_properties(properties)
+        dom_info = yield self.redhawk.get_domain_info(domain_name)
+        propertySet = yield self.redhawk.get_domain_properties(domain_name)
+        info = self.format_properties(propertySet, dom_info.query([]))
 
         if prop_name:
             value = None

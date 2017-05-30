@@ -4,7 +4,7 @@
 
 Contains the REDHAWK python implementation of the generic REST API.
 
-Please visit [the Wiki](https://github.com/Geontech/rest-python/wiki) for more detailed instructions on the changes made to this repository and how it can be used for UI development.
+Please visit [the Wiki](https://github.com/Geontech/rest-python/wiki) for more detailed instructions on the changes made to this repository and how it can be used for development of external control interfaces, data bridges, and graphical user interfaces without having to install REDHAWK on the target system.
 
 ## REDHAWK Documentation
 
@@ -35,3 +35,4 @@ For a more permanent solution, consult the `requirements.txt` and run the follow
 can be found at `deploy/rest-python-supervisor.conf`.
 
 Once running the REST Interface can be tested at `http://localhost:<desired_port>/rh/rest/domains`.
+

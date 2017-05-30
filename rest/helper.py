@@ -32,31 +32,51 @@ class PropertyHelper(object):
 
     """ For going from REDHAWK to JSON """
     @staticmethod
-    def format_properties(properties):
-        if not properties:
-            return []
-        elif any(isinstance(p, Property) for p in properties):
-            return PropertyHelper._property_set(properties)
-        else:
+    def format_properties(propertySet, properties=None):
+        if propertySet and any(isinstance(p, Property) for p in propertySet):
+            # If properties was also provided, filter the property set
+            if properties:
+                propertySet = PropertyHelper._filter_propertySet(propertySet, properties)
+            
+            return PropertyHelper._property_set(propertySet)
+        elif properties:
             return PropertyHelper._corba_properties(properties)
+        else:
+            return []
 
     @staticmethod
     def _corba_properties(properties):
         prop_list = []
         for prop in properties:
-            ret = PropertyHelper.__any(prop.value)
-            ret['id'] = prop.id
+            ret = PropertyHelper.__any(prop)
             prop_list.append(ret)
 
         return prop_list
 
     @staticmethod
+    def _filter_propertySet(propertySet, properties):
+        filteredPropertySet = []
+
+        for propertySetItem in propertySet:
+            for prop in properties:
+                if propertySetItem.id == prop.id:
+                    filteredPropertySet.append(propertySetItem)
+                    break
+
+        return filteredPropertySet
+
+    @staticmethod
     def _property_set(properties):
         def _handle_simple(prop):
+            val = prop.defValue
+
             try:
-                val = prop.queryValue()
+                tempVal = prop.queryValue()
+
+                if tempVal != None:
+                    val = tempVal
             except:
-                val = None
+                pass
 
             if hasattr(prop, 'clean_name'):
                 clean_name = prop.clean_name
@@ -134,37 +154,76 @@ class PropertyHelper(object):
             props_dict[prop['id']] = _handle_value(prop.get('value', None))
         return props_dict
 
+    """ Going from JSON to ANY """
+    @staticmethod
+    def unformat_properties_without_query(properties):
+        def _handle_value(val):
+            out_val = val
+            # Struct or Simple Sequence (Struct Sequence not currently supported)
+            if type(val) == list:
+                # Struct
+                if len(val) > 0 and type(val[0]) == dict:
+                    isStruct = False
+
+                    out_val = {}
+
+                    for idValPair in val:
+                        out_val[idValPair.get('id')] = idValPair.get('value', None)
+                #Simple Sequence or empty
+                else:
+                    pass
+            # Simple
+            return out_val
+
+        props_dict = {}
+        for prop in properties:
+            props_dict[prop['id']] = _handle_value(prop.get('value', None))
+        return props_dict
+
     ###############################################
     # Private
 
     @staticmethod
     def __any_simple(corba_any):
-        return {'scaType': 'simple', 'value': corba_any._v}
+        return {'id': corba_any.id, 'scaType': 'simple', 'value': corba_any.value.value()}
 
     @staticmethod
     def __any_struct(corba_any):
-        ret = {'scaType': 'struct'}
-        value = {}
-        for a in corba_any._v:
-            value[a.id] = a.value._v
-        ret['value'] = value
+        ret = {'id': corba_any.id, 'scaType': 'struct', 'value': []}
+        for a in corba_any.value.value():
+            ret['value'].append(PropertyHelper.__any_simple(a))
         return ret
 
     @staticmethod
-    def __any_seq(corba_any):
-        ret = {'scaType': 'seq', 'value': []}
-        for a in corba_any._v:
-            ret['value'].append(PropertyHelper.__any(a))
+    def __any_simple_seq(corba_any):
+        ret = {'id': corba_any.id, 'scaType': 'seq', 'value': []}
+        for a in corba_any.value.value():
+            ret['value'].append(PropertyHelper.__any_simple(a))
+        return ret
+
+    @staticmethod
+    def __any_struct_seq(corba_any):
+        ret = {'id': corba_any.id, 'scaType': 'structSeq', 'value': []}
+        for a in corba_any.value.value():
+            value = []
+            for m in a.value():
+                value.append(PropertyHelper.__any_simple(m))
+            ret['value'].append(value)
         return ret
 
     @staticmethod
     def __any(corba_any):
-        type_name = str(corba_any._t)
+        type_name = str(corba_any.value._t)
 
         if 'CORBA.TypeCode("IDL:CF/Properties:1.0")' == type_name:
             return PropertyHelper.__any_struct(corba_any)
         elif 'CORBA.TypeCode("IDL:omg.org/CORBA/AnySeq:1.0")' == type_name:
-            return PropertyHelper.__any_seq(corba_any)
+            # Struct sequence
+            if len(corba_any.value.value()) != 0 and 'CORBA.TypeCode("IDL:CF/Properties:1.0")' == str(corba_any.value.value()[0]._t):
+                return PropertyHelper.__any_struct_seq(corba_any)
+            # Simple sequence or empty struct sequence
+            else:
+                return PropertyHelper.__any_seq(corba_any)
         else:
             return PropertyHelper.__any_simple(corba_any)
 

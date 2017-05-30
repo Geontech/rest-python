@@ -22,16 +22,17 @@ REDHAWK Helper class used by the Server Handlers
 """
 
 import logging
+from ossie.cf import CF  # For AllocationRequests
 from ossie.cf import StandardEvent  # For the EventHelper
 from ossie.utils import redhawk
 from ossie.events import GenericEventConsumer
+import struct
 import traceback
 
 from tornado.websocket import WebSocketClosedError
 
 from functools import partial
 import uuid
-
 
 def scan_domains():
     return redhawk.scan()
@@ -62,6 +63,22 @@ class ApplicationReleaseError(Exception):
     def __str__(self):
         return "Not able to release waveform '%s'. %s" % (self.name, self.msg)
 
+class AllocateError(Exception):
+    def __init__(self, id='', msg=''):
+        self.id = id
+        self.msg = msg
+
+    def __str__(self):
+        return "Not able to allocate allocation '%s'. %s" % (self.id, self.msg)
+
+class DeallocateError(Exception):
+    def __init__(self, id='', msg=''):
+        self.id = id
+        self.msg = msg
+
+    def __str__(self):
+        return "Not able to deallocate allocation '%s'. %s" % (self.id, self.msg)
+
 # Helper class to convert the enumeration fields to something JSON serializable
 class EventHelper(object):
     ENUM_MAP = {
@@ -86,10 +103,10 @@ class EventHelper(object):
                     formattedEvent[k] = []
                     for item in v:
                         formattedEvent[k].append(EventHelper.format_event(item))
+                elif k == "sourceIOR":
+                    formattedEvent[k] = str(event)
                 else:
                     formattedEvent[k] = EventHelper.format_event(v)
-        elif str(type(event)) == "<type 'instance'>":
-            formattedEvent = str(event)
         else:
             formattedEvent = event
 
@@ -135,7 +152,9 @@ class TopicConsumer (GenericEventConsumer):
 
 
 class Domain:
+    allocationMgr_ptr = None
     domMgr_ptr = None
+    fileMgr_ptr = None
     odmListener = None
     topicHandlers = None
     name = None
@@ -189,18 +208,91 @@ class Domain:
     def _establish_domain(self):
         redhawk.setTrackApps(False)
         self.domMgr_ptr = redhawk.attach(str(self.name))
+        self.allocationMgr_ptr = self.domMgr_ptr.ref._get_allocationMgr()
+        self.fileMgr_ptr = self.domMgr_ptr._get_fileMgr()
 
     def properties(self):
-        props = self.domMgr_ptr.query([])  # TODO: self.domMgr_ptr._properties
+        props = self.domMgr_ptr._properties
         return props
 
-    def event_channels(self): # TODO: Check the event service for names.
-        return self.topicHandlers.keys()
+    def event_channels(self, number):
+        return self.domMgr_ptr.getEventChannelMgr().listChannels(int(number))[0]
+
+    def get_allocation_info(self):
+        if self.allocationMgr_ptr:
+            return self.allocationMgr_ptr
+        raise ResourceNotFound('allocation manager', self.name)
 
     def get_domain_info(self):
         if self.domMgr_ptr:
             return self.domMgr_ptr
         raise ResourceNotFound('domain', self.name)
+
+    def get_path(self, path):
+        fileInfos = self.fileMgr_ptr.list(path)
+
+        contents = ''
+        directories = []
+        files = []
+
+        # Iterate over the files at this path
+        for fileInfoType in fileInfos:
+            executable = False
+            readOnly = True
+
+            for fileProp in fileInfoType.fileProperties:
+                if fileProp.id == 'READ_ONLY':
+                    readOnly = fileProp.value.value()
+                elif fileProp.id == 'EXECUTABLE':
+                    executable = fileProp.value.value()
+
+            newObject = {
+                'executable': executable,
+                'name': str(fileInfoType.name), 
+                'read_only': readOnly,
+                'size': fileInfoType.size
+            }
+
+            if str(fileInfoType.kind) == 'DIRECTORY':
+                directories.append(newObject)
+            elif str(fileInfoType.kind) == 'PLAIN':
+                files.append(newObject)
+
+        # No need to read the file if there are directories
+        if len(directories) != 0:
+            return {'contents': contents, 'directories': directories, 'files': files}
+
+        # No need to read the file if there are multiple files
+        if len(files) != 1:
+            return {'contents': contents, 'directories': directories, 'files': files}
+
+        # Don't return the contents of the file if this is a directory path
+        if path.endswith('/'):
+            return {'contents': contents, 'directories': directories, 'files': files}
+
+        # Read the file to the user
+        fileToRead = self.fileMgr_ptr.open(path, True)
+
+        contents = fileToRead.read(fileToRead.sizeOf())
+
+        if not path.endswith(('.py', '.m', '.xml')):
+            contents = struct.unpack(str(fileToRead.sizeOf()) + 'B', contents)
+
+        fileToRead.close()
+
+        return {'contents': str(contents), 'directories': directories, 'files': files}
+
+    def find_allocation(self, allocation_id=None):
+        _allocationMgr = self.get_allocation_info()
+        allocations = _allocationMgr.localAllocations([])
+
+        if not allocation_id:
+            return allocations
+
+        for allocation in allocations:
+            if allocation.allocationID == allocation_id:
+                return allocation
+        raise ResourceNotFound('allocation', allocation_id)
 
     def find_app(self, app_id=None):
         _dom = self.get_domain_info()
@@ -258,6 +350,43 @@ class Domain:
                 return svc
         raise ResourceNotFound('service', service_id)
 
+    def allocate(self, allocation_id, device_ids, properties, source_id):
+        _dom = self.get_domain_info()
+        allocationMgr = self.get_allocation_info()
+        
+        if not device_ids or len(device_ids) == 0:
+            device_ids = [device._id for device in _dom.devices]
+        
+        device_refs = [device.ref for device in _dom.devices]
+        allocationRequest = CF.AllocationManager.AllocationRequestType(str(allocation_id), properties, device_ids, device_refs, str(source_id))
+
+        try:
+            allocationMgr.allocate([allocationRequest])
+            return allocation_id
+        except Exception, e:
+            raise AllocateError(allocation_id, str(e))
+
+    def allocations(self):
+        allocations_dict = []
+        allocations = self.find_allocation()
+        for allocation in allocations:
+            allocations_dict.append({'id': allocation.allocationID, 'deviceId': allocation.allocatedDevice._get_identifier()})
+        return allocations_dict
+
+    def append(self, path, contents):
+        if not self.fileMgr_ptr.exists(path):
+            return {'status': 'failure', 'message': 'file does not exist'}
+
+        fileToAppend = self.fileMgr_ptr.open(path, False)
+
+        fileToAppend.setFilePointer(fileToAppend.sizeOf())
+
+        fileToAppend.write(contents)
+
+        fileToAppend.close()
+
+        return {'status': 'success'}
+
     def apps(self):
         apps_dict = []
         apps = self.find_app()
@@ -272,6 +401,39 @@ class Domain:
             comps_dict.append({'name': comp.name, 'id': comp._get_identifier()})
         return comps_dict
 
+    def create(self, path, contents, read_only):
+        if self.fileMgr_ptr.exists(path):
+            return {'status': 'failure', 'message': 'file already exists'}
+
+        fileType = 'DIRECTORY'
+
+        if not path.endswith('/'):
+            fileType = 'FILE'
+
+        if contents or fileType == 'FILE':
+            newFile = self.fileMgr_ptr.create(path)
+        else:
+            self.fileMgr_ptr.mkdir(path)
+            return {'status': 'success'}
+
+        if contents:
+            if type(contents) == list:
+                contents = struct.pack(str(len(contents)) + 'B', *contents)
+
+            newFile.write(contents)
+
+        newFile.close()
+
+        return {'status': 'success'}
+
+    def deallocate(self, allocation_ids):
+        allocationMgr = self.get_allocation_info()
+        try:
+            allocationMgr.deallocate([str(allocation_id) for allocation_id in allocation_ids])
+            return allocation_ids
+        except Exception, e:
+            raise DeallocateError(allocation_ids, str(e))
+
     def launch(self, app_name):
         _dom = self.get_domain_info()
         try:
@@ -280,6 +442,17 @@ class Domain:
         except Exception, e:
             raise WaveformLaunchError(app_name, str(e))
 
+    def move(self, from_path, to_path, keep_original):
+        if not self.fileMgr_ptr.exists(from_path):
+            return {'status': 'failure', 'message': 'from path does not exist'}
+
+        if keep_original:
+            self.fileMgr_ptr.copy(from_path, to_path)
+            return {'status': 'success'}
+        else:
+            self.fileMgr_ptr.move(from_path, to_path)
+            return {'status': 'success'}
+
     def release(self, app_id):
         app = self.find_app(app_id)
         try:
@@ -287,6 +460,36 @@ class Domain:
             return app_id
         except Exception, e:
             raise ApplicationReleaseError(app_id, str(e))
+
+    def remove(self, path):
+        if not self.fileMgr_ptr.exists(path):
+            return {'status': 'failure', 'message': 'file does not exist'}
+
+        fileType = 'DIRECTORY'
+
+        if not path.endswith('/'):
+            fileType = 'FILE'
+
+        if fileType == 'FILE':
+            self.fileMgr_ptr.remove(path)
+        else:
+            self.fileMgr_ptr.rmdir(path)
+
+        return {'status': 'success'}
+
+    def replace(self, path, contents):
+        if not self.fileMgr_ptr.exists(path):
+            return {'status': 'failure', 'message': 'file does not exist'}
+
+        self.fileMgr_ptr.remove(path)
+
+        fileToCreate = self.fileMgr_ptr.create(path)
+
+        fileToCreate.write(contents)
+
+        fileToCreate.close()
+
+        return {'status': 'success'}
 
     def available_apps(self):
         _dom = self.get_domain_info()

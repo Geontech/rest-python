@@ -43,7 +43,7 @@ class Components(JsonHandler, PropertyHelper, PortHelper):
                 'id': comp._id,
                 'started': comp._get_started(),
                 'ports': self.format_ports(comp.ports),
-                'properties': self.format_properties(comp._properties)
+                'properties': self.format_properties(comp._properties, comp.query([]))
             }
         else:
             comps = yield self.redhawk.get_component_list(domain_name, app_id)
@@ -58,7 +58,7 @@ class ComponentProperties(JsonHandler, PropertyHelper):
         comp = yield self.redhawk.get_component(domain, application, component)
 
         self._render_json({
-            'properties': self.format_properties(comp._properties)
+            'properties': self.format_properties(comp._properties, comp.query([]))
         })
 
     @gen.coroutine
