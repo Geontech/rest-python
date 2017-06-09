@@ -28,10 +28,20 @@ class Default(object):
 
     WAVEFORM = 'SigTest'
 
-    COMPONENT = 'SigGen'
+    COMPONENT = 'rh.SigGen'
     COMPONENT_PROPERTY = 'frequency'
     COMPONENT_PROPERTY_VALUE = 1000
     COMPONENT_PROPERTY_CHANGE = 2000
+    COMPONENT_USES_PORT = 'dataShort_out'
 
     RESOURCE_NOT_FOUND_ERR = 'ResourceNotFound'
     RESOURCE_NOT_FOUND_MSG_REGEX = re.compile(r"^Unable to find .[^']* '.[^']*'$")
+    
+    FEI_DEVICE      = 'FEI_FileReader'
+    FEI_ALLOC_ID    = 'test_allocation'
+    FEI_ALLOC_CF    = 101700000
+    FEI_ALLOC_SR    = 512000
+    FEI_ALLOC_BW    = None
+    FEI_ALLOC_TYPE  = 'I'
+    FEI_ALLOC_R     = True
+

@@ -21,7 +21,7 @@
 import logging
 
 from bulkio.bulkioInterfaces import BULKIO__POA
-
+from bulkio import sri
 from omniORB import CORBA
 
 # third party imports
@@ -69,25 +69,25 @@ class BulkIOWebsocketHandler(CrossDomainSockets):
             for p in obj.ports:
                 if p.name == path[0]:
                     if p._direction == 'Uses':
-                        data_type = p._using.name
                         namespace = p._using.nameSpace
 
                         if namespace == 'BULKIO':
-                            self.port = p.ref
+                            self.port = p
                             logging.debug("Found port %s", self.port)
 
+                            data_type = p._using.name
                             bulkio_poa = getattr(BULKIO__POA, data_type)
                             logging.debug(bulkio_poa)
 
                             self.async_port = AsyncPort(bulkio_poa, self._pushSRI, self._pushPacket)
-                            self._portname = 'rest-python-%s' % id(self)
 
                             if len(path) == 3:
                                 self._connectionId = path[2][1:]
                             else:
-                                self._connectionId = None
+                                self._connectionId = 'rest-python-%s' % id(self)
 
-                            self.port.connectPort(self.async_port.getPort(), self._portname, self._connectionId)
+                            self.port.ref.connectPort(self.async_port.getPort(), self._connectionId)
+                            logging.info("Opened websocket to %s, %s", self.port, self._connectionId)
 
                             break
                         else:
@@ -106,52 +106,39 @@ class BulkIOWebsocketHandler(CrossDomainSockets):
             self.close()
 
     def on_message(self, message):
-        ctrl = json.loads(message)
+        try:
+            ctrl = json.loads(message)
 
-        if (ctrl.type == Control.MaxWidth):
-            if 0 < ctrl.value:
-                self._outputWidth = ctrl.value
-                logging.info('Decimation requested to {0} samples'.format(ctrl.value))
-            else:
-                self._outputWidth = None
-                logging.info('Decimation disabled')
+            if (ctrl['type'] == Control.MaxWidth):
+                if 0 < ctrl['value']:
+                    self._outputWidth = ctrl['value']
+                    logging.info('Decimation requested to {0} samples'.format(ctrl['value']))
+                else:
+                    self._outputWidth = None
+                    logging.info('Decimation disabled')
 
-        elif (ctrl.type == Control.MaxPPS):
-            logging.warning('Packets per second (PPS) not implemented yet.')
+            elif (ctrl['type'] == Control.MaxPPS):
+                logging.warning('Packets per second (PPS) not implemented yet.')
+        except Exception as e:
+            self.write_message(dict(error='SystemError', message=str(e)))
 
     def on_close(self):
         logging.debug('Stream CLOSE')
         try:
-            self.port.disconnectPort(self._portname, self._connectionId)
+            self.port.ref.disconnectPort(self._connectionId)
         except CORBA.TRANSIENT:
             pass 
         except Exception, e:
-            logging.exception('Error disconnecting port %s' % self._portname)
+            logging.exception('Error disconnecting port %s' % self._connectionId)
 
-    def _pushSRI(self, SRI):
-        newSri = dict(
-            hversion=SRI.hversion,
-            xstart=SRI.xstart,
-            xdelta=SRI.xdelta,
-            xunits=SRI.xunits,
-            subsize=SRI.subsize,
-            ystart=SRI.ystart,
-            ydelta=SRI.ydelta,
-            yunits=SRI.yunits,
-            mode=SRI.mode,
-            streamID=SRI.streamID,
-            blocking=SRI.blocking,
-            keywords=dict(((kw.id, kw.value.value()) for kw in SRI.keywords)))
-        self._updateSRIFromDict(newSri)
+    def _pushSRI(self, newSRI):
+        origSRI, changed = self._getSRI(newSRI.streamID)
+        if origSRI is not None:
+            changed = sri.compareSRI(origSRI, newSRI)
+        self._SRIs[newSRI.streamID] = (newSRI, changed)
 
     def _getSRI(self, streamID):
         return self._SRIs.get(streamID, (None, True))
-
-    def _updateSRIFromDict(self, newSri):
-        sri, changed = self._getSRI(newSri['streamID'])
-        if sri is not None:
-            changed = compareSRI(sri, newSri)
-        self._SRIs[sri.streamID] = (newSri, changed)
 
     def _pushPacket(self, data, ts, EOS, stream_id):
         data = numpy.array(data)
@@ -160,14 +147,14 @@ class BulkIOWebsocketHandler(CrossDomainSockets):
             self._outputWidth = data.size 
 
         # Get SRI and modify if necessary (from decimation)
-        sri, changed = self._getSRI(stream_id)
-        outSri = dict.copy(sri)
+        SRI, changed = self._getSRI(stream_id)
+        outSRI = copy_sri(SRI)
         if 0 < data.size and data.size != self._outputWidth:
             D, M = divmod(data.size, self._outputWidth)
             if 0 == M and 1 < D:
                 # Mean decimate
                 data = data.reshape(-1, D).mean(axis=1)
-                outSri.xdelta = sri.xdelta * D
+                outSRI.xdelta = SRI.xdelta * D
                 changed = True
             else:
                 # Restore...invalid setting.
@@ -179,12 +166,12 @@ class BulkIOWebsocketHandler(CrossDomainSockets):
         # Tack on SRI, Package, Deliver.
         packet = dict(
             streamID   = stream_id,
-            T          = ts,
+            T          = ts.__dict__,
             EOS        = EOS,
             sriChanged = changed,
-            SRI        = outSri,
+            SRI        = outSRI.__dict__,
             type       = self.port._using.name,
-            dataBuffer = data
+            dataBuffer = data.tolist()
             )
         self._ioloop.add_callback(self.write_message, packet)
 
@@ -196,31 +183,18 @@ class BulkIOWebsocketHandler(CrossDomainSockets):
             logging.debug('Received WebSocketClosedError. Ignoring')
             self.close()
 
-# Imported from ossie.utils sb
-# TODO: Handle keywords JSON strings
-def compareSRI(a, b):
-    if a.hversion != b.hversion:
-        return False
-    if a.xstart != b.xstart:
-        return False
-    if a.xdelta != b.xdelta:
-        return False
-    if a.xunits != b.xunits:
-        return False
-    if a.subsize != b.subsize:
-        return False
-    if a.ystart != b.ystart:
-        return False
-    if a.ydelta != b.ydelta:
-        return False
-    if a.yunits != b.yunits:
-        return False
-    if a.mode != b.mode:
-        return False
-    if a.streamID != b.streamID:
-        return False
-    if a.blocking != b.blocking:
-        return False
-    if a.keywords != b.keywords:
-        return False
-    return True
+def copy_sri(SRI):
+    copied = sri.create()
+    copied.hversion = SRI.hversion
+    copied.xstart = SRI.xstart
+    copied.xdelta = SRI.xdelta
+    copied.xunits = SRI.xunits
+    copied.subsize = SRI.subsize
+    copied.ystart = SRI.ystart
+    copied.ydelta = SRI.ydelta
+    copied.yunits = SRI.yunits
+    copied.mode = SRI.mode
+    copied.streamID = SRI.streamID
+    copied.blocking = SRI.blocking
+    copied.keywords = SRI.keywords[:]
+    return copied

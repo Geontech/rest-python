@@ -46,10 +46,6 @@ from defaults import Default
 
 class BulkIOTests(JsonTests, AsyncHTTPTestCase, LogTrapTestCase):
 
-    # def setUp(self):
-    #     super(RESTfulTest, self).setUp()
-    #     rtl_app.RTLApp('REDHAWK_DEV').stop_survey()
-
     def setUp(self):
         super(JsonTests, self).setUp()
         json, resp = self._json_request(
@@ -86,33 +82,37 @@ class BulkIOTests(JsonTests, AsyncHTTPTestCase, LogTrapTestCase):
 
         # NOTE: A timeout means the website took too long to respond
         # it could mean that bulkio port is not sending data
-        cid = next((cp['id'] for cp in self.components if cp['name'] == 'SigGen'), None)
+        cid = next((cp['id'] for cp in self.components if cp['name'] == Default.COMPONENT), None)
         if not cid:
-            self.fail('Unable to find SigGen component')
+            self.fail('Unable to find %s component' % (Default.COMPONENT))
 
-        url = self.get_url("%s/components/%s/ports/out/bulkio"%(Default.REST_BASE+self.base_url,cid)).replace('http','ws')
-        conn1 = yield websocket.websocket_connect(url,
-                                                  io_loop=self.io_loop) 
+        url = self.get_url("%s/components/%s/ports/%s/bulkio"%(Default.REST_BASE+self.base_url,cid,Default.COMPONENT_USES_PORT)).replace('http','ws')
+        conn1 = yield websocket.websocket_connect(url, io_loop=self.io_loop) 
 
         foundSRI = False
         for x in xrange(10):
             msg = yield conn1.read_message()
             try:
-                data = json.loads(msg)
-                logging.debug("Got SRI %s", data)
+                packet = json.loads(msg)
+                sri = packet.get('SRI', None)
+                logging.debug("Got SRI %s", sri)
                 foundSRI = True
                 props = set(('hversion', 'xstart', 'xdelta', 'xunits',
                             'subsize', 'ystart', 'ydelta', 'yunits', 'mode',
                             'streamID', 'blocking', 'keywords'))
-                missing = props.difference(data.keys())
+                missing = props.difference(sri.keys())
                 if missing:
-                   self.fail("Missing SRI properties %s" % missing)
+                    self.fail("Missing SRI properties %s" % missing)
+
+                buf = packet.get('dataBuffer', [])
+                if not buf:
+                    self.fail("Data buffer was empty.")
+
             except ValueError:
                 data = dict(data=msg)
 
-        if data.get('error', None):
-            self.fail('Recieved websocket error %s' % data)
-        #conn1.protocol.close()
+        if packet.get('error', None):
+            self.fail('Recieved websocket error %s' % packet)
         conn1.close()
 
         # wait a little bit to force close to take place in ioloop

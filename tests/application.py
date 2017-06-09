@@ -37,17 +37,11 @@ class ApplicationTests(JsonTests):
 
     def tearDown(self):
         # kill SigTest waveforms
-        url = '/domains/'+Default.DOMAIN_NAME
-        json, resp =  self._json_request(url, 200)
-        if 'applications' not in json:
-            json['applications'] = []
-        for a in json['applications']:
-            if a['name'].startswith('SigTest'):
-                self._json_request(
-                            '/domains/'+Default.DOMAIN_NAME+'/applications/'+a['id'],
-                            200,
-                            'DELETE'
-                            )
+        dom = self.redhawk._get_domain(Default.DOMAIN_NAME)
+        apps = dom.find_app()
+        for app in apps:
+            if app.name.startswith(Default.WAVEFORM):
+                app.releaseObject()
         super(ApplicationTests, self).tearDown();
     
     @tornado.gen.coroutine
@@ -125,11 +119,12 @@ class ApplicationTests(JsonTests):
         self.assertAttr(json, 'id', wf_id)
 
         self.assertList(json, 'properties')
-        # TODO: self.assertProperties(json['properties'])
+        self.assertProperties(json['properties'])
         
     @tornado.testing.gen_test
     def test_detect_new_applications(self):
-        yield [ self.detect_new_applications() for x in xrange(10) ]        
+        # yield [ self.detect_new_applications() for x in xrange(10) ]
+        yield self.detect_new_applications()
         
     @tornado.gen.coroutine
     def detect_new_applications(self):
@@ -138,31 +133,29 @@ class ApplicationTests(JsonTests):
         
         # start a new app
         id = yield self.redhawk.launch_application(Default.DOMAIN_NAME, Default.WAVEFORM)
-        
-#         yield self._async_sleep(.5)
-        
+        self._async_sleep(1)
+
         # ensure it exists in the application
         url, apps2 = yield self._get_applications()
         if id not in (a['id'] for a in apps2):
             self.fail("Expecting %s in domain %s" % (id, Default.DOMAIN_NAME))
-#         if (len(apps)+1 != len(apps2)):
-#             self.fail("Expecting one additional app %s %s" % (apps, apps2))
+        if (len(apps)+1 != len(apps2)):
+            self.fail("Expecting one additional app %s %s" % (apps, apps2))
             
         # now release it
         yield self.redhawk.release_application(Default.DOMAIN_NAME, id)
+        self._async_sleep(1)
 
         # ensure it is missing in the application list
         url, apps3 = yield self._get_applications()
         if id in (a['id'] for a in apps3):
             self.fail("Not Expecting %s in domain %s" % (id, Default.DOMAIN_NAME))
-#         if (len(apps) != len(apps3)):
-#             self.fail("Expecting same number of apps %s %s" % (apps, apps3))
+        if (len(apps) != len(apps3)):
+            self.fail("Expecting same number of apps %s %s" % (apps, apps3))
         
         
     @tornado.testing.gen_test
     def test_not_found(self):
         url = '/domains/%s/applications/adskfhsdhfasdhjfhsd' %Default.DOMAIN_NAME
         json, resp = yield self._async_json_request(url, 404)
-
-        self._resource_not_found(json)
     

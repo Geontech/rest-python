@@ -146,14 +146,26 @@ class JsonAssertions(object):
 
     def assertProperties(self, data):
         self.assertTrue(isinstance(data, list))
+        MODES = ['readwrite', 'writeonly', 'readonly']
+        SCA_TYPES = ['simple', 'simpleSeq', 'struct', 'structSeq']
         for prop in data:
-            self.assertList(prop, 'kinds')
-            self.assertTrue('name' in prop)
-            self.assertTrue('value' in prop)
-            self.assertTrue('scaType' in prop)
-            self.assertTrue('mode' in prop)
-            self.assertTrue('type' in prop)
+            # CORBA and SCA Properties have these 4 fields for certain.
             self.assertTrue('id' in prop)
+            self.assertTrue('name' in prop)
+            self.assertTrue('scaType' in prop)
+            self.assertTrue(prop['scaType'] in SCA_TYPES)
+            self.assertTrue('value' in prop)
+            if prop['scaType'] != 'simple':
+                self.assertList(prop, 'value')
+            if prop['scaType'] in ['struct', 'structSeq']:
+                self.assertProperties(prop['value'])
+
+            # SCA Properties can be identified from CORBA ones since the former have 'kinds', among other things.
+            if 'kinds' in prop:
+                if prop['scaType'] in ['simple', 'simpleSeq']:
+                    self.assertTrue('type' in prop)
+                self.assertTrue('mode' in prop)
+                self.assertTrue(prop['mode'] in MODES)
 
 
 

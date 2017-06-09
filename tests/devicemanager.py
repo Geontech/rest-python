@@ -73,7 +73,4 @@ class DeviceManagerTests(JsonTests):
         self.assertTrue('devices' in body)
 
     def test_info_not_found(self):
-        global DOMAIN_NAME
         body, resp = self._json_request("/domains/"+Default.DOMAIN_NAME+"/deviceManagers/sdkafsdfhklasdfhkajl", 404)
-
-        self._resource_not_found(body)

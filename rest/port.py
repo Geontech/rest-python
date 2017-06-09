@@ -51,17 +51,15 @@ class PortHandler(JsonHandler, PropertyHelper, PortHelper):
                 name = path[0]
                 for port in obj.ports:
                     if port.name == name:
-                        self.write(json.dumps(self.format_port(port)))
+                        self._render_json(self.format_port(port))
                         break
                 else:
                     raise ResourceNotFound('port', name)
             else:
-                self.write(json.dumps({'ports': self.format_ports(obj.ports)}))
+                self._render_json({'ports': self.format_ports(obj.ports)})
         except ResourceNotFound, e:
             logging.debug('Resource not found %s' % str(e), exc_info=1)
-            self.set_status(404)
-            self.write(dict(error='ResourceNotFound', message=str(e)))
+            self._handle_request_exception(e)
         except Exception, e:
             logging.exception('Error with request %s' % self.request.full_url())
-            self.set_status(500)
-            self.write(dict(error='SystemError', message=str(e)))
+            self._handle_request_exception(e)

@@ -34,51 +34,60 @@ import json
 class Devices(JsonHandler, PropertyHelper, PortHelper):
     @gen.coroutine
     def get(self, domainName, managerId, deviceId=None):
-        if deviceId:
-            dev = yield self.redhawk.get_device(domainName, managerId, deviceId)
+        try:
+            if deviceId:
+                dev = yield self.redhawk.get_device(domainName, managerId, deviceId)
 
-            info = {
-                'name': dev.name,
-                'id': dev._id,
-                'started': dev._get_started(),
-                'ports': self.format_ports(dev.ports),
-                'properties': self.format_properties(dev._properties, dev.query([]))
-            }
-        else:
-            devices = yield self.redhawk.get_device_list(domainName, managerId)
-            info = {'devices': devices}
+                info = {
+                    'name': dev.name,
+                    'id': dev._id,
+                    'started': dev._get_started(),
+                    'ports': self.format_ports(dev.ports),
+                    'properties': self.format_properties(dev._properties, dev.query([]))
+                }
+            else:
+                devices = yield self.redhawk.get_device_list(domainName, managerId)
+                info = {'devices': devices}
 
-        self._render_json(info)
+            self._render_json(info)
+        except Exception as e:
+            self._handle_request_exception(e)
 
 
 class DeviceProperties(JsonHandler, PropertyHelper):
     @gen.coroutine
     def get(self, domainName, managerId, deviceId):
-        dev = yield self.redhawk.get_device(domainName, managerId, deviceId)
+        try:
+            dev = yield self.redhawk.get_device(domainName, managerId, deviceId)
 
-        self._render_json({
-            'properties': self.format_properties(dev._properties, dev.query([]))
-        })
+            self._render_json({
+                'properties': self.format_properties(dev._properties, dev.query([]))
+            })
+        except Exception as e:
+            self._handle_request_exception(e)
     
     @gen.coroutine
     def put(self, domainName, managerId, deviceId):
-        PUT_METHODS = {
-            'configure'     : self.redhawk.device_configure,
-            'allocate'      : self.redhawk.device_allocate,
-            'deallocate'    : self.redhawk.device_deallocate
-        }
-        data = json.loads(self.request.body)
-        json_props = data.get('properties', [])
-        changes = self.unformat_properties(json_props)
-        
-        cb = PUT_METHODS.get(data['method'], None)
-        try: 
-            r, message = yield cb(domainName, managerId, deviceId, changes)
-            if 'configure' == data['method']:
-                self._render_json({ 'method': data['method'], 'status': True , 'message': message})
-            else:
-                self._render_json({ 'method': data['method'], 'status': r , 'message': message})
+        try:
+            PUT_METHODS = {
+                'configure'     : self.redhawk.device_configure,
+                'allocate'      : self.redhawk.device_allocate,
+                'deallocate'    : self.redhawk.device_deallocate
+            }
+            data = json.loads(self.request.body)
+            json_props = data.get('properties', [])
+            changes = self.unformat_properties(json_props)
+            
+            cb = PUT_METHODS.get(data['method'], None)
+            try: 
+                r, message = yield cb(domainName, managerId, deviceId, changes)
+                if 'configure' == data['method']:
+                    self._render_json({ 'method': data['method'], 'status': True , 'message': message})
+                else:
+                    self._render_json({ 'method': data['method'], 'status': r , 'message': message})
 
+            except Exception as e:
+                self._render_json({ 'method': data['method'], 'status': False, 'message': "{0}".format(e) })
         except Exception as e:
-            self._render_json({ 'method': data['method'], 'status': False, 'message': "{0}".format(e) })
+            self._handle_request_exception(e)
 

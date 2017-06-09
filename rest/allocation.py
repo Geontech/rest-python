@@ -35,52 +35,51 @@ import json
 class Allocations(JsonHandler, PropertyHelper):
     @gen.coroutine
     def get(self, domain_name, allocation_id=None):
+        try:
+            if allocation_id:
+                allocation = yield self.redhawk.get_allocation(domain_name, allocation_id)
 
-        if allocation_id:
-            allocation = yield self.redhawk.get_allocation(domain_name, allocation_id)
+                info = {
+                    'id': allocation.allocationID,
+                    'deviceId': allocation.allocatedDevice._get_identifier(),
+                    'deviceManagerId': allocation.allocationDeviceManager._get_identifier(),
+                    'properties': self.format_properties(allocation.allocationProperties),
+                    'sourceId': allocation.sourceID
+                }
+            else:
+                allocations = yield self.redhawk.get_allocation_list(domain_name)
 
-            info = {
-                'id': allocation.allocationID,
-                'deviceId': allocation.allocatedDevice._get_identifier(),
-                'deviceManagerId': allocation.allocationDeviceManager._get_identifier(),
-                'properties': self.format_properties(allocation.allocationProperties),
-                'sourceId': allocation.sourceID
-            }
-        else:
-            allocations = yield self.redhawk.get_allocation_list(domain_name)
+                info = {'allocations': allocations}
 
-            info = {'allocations': allocations}
-
-        self._render_json(info)
-
-    @gen.coroutine
-    def post(self, domain_name, allocation_id=None):
-        data = json.loads(self.request.body)
-        json_device_ids = data.get('deviceIds', [])
-        json_props = data.get('properties', [])
-        json_source_id = data.get('sourceId', '')
-        props = self.unformat_properties_without_query(json_props)
-
-        if not allocation_id:
-            allocation_id = data.get('allocationId', '')
-
-        allocation_id = yield self.redhawk.allocate(domain_name, allocation_id, json_device_ids, props, json_source_id)
-        allocations = yield self.redhawk.get_allocation_list(domain_name)
-
-        self._render_json({'allocated': allocation_id, 'allocations': allocations})
+            self._render_json(info)
+        except Exception as e:
+            self._handle_request_exception(e)
 
     @gen.coroutine
-    def delete(self, domain_name, allocation_id=None):
+    def post(self, domain_name, *args):
+        try:
+            data = json.loads(self.request.body)
+            json_device_ids = data.get('deviceIds', [])
+            json_props = data.get('properties', [])
+            json_source_id = data.get('sourceId', '')
+            props = self.unformat_properties_without_query(json_props)
 
-        if allocation_id:
-            yield self.redhawk.deallocate(domain_name, [allocation_id])
+            if 'allocationId' in data:
+                allocation_id = data['allocationId']
+            else:
+                raise Exception('ALLOCATION_ID is required for allocations.')
+
+            allocation_id = yield self.redhawk.allocate(domain_name, allocation_id, json_device_ids, props, json_source_id)
             allocations = yield self.redhawk.get_allocation_list(domain_name)
 
-            info = {
-                'deallocated': [allocation_id], 
-                'allocations': allocations
-            }
-        else:
+            self._render_json({'allocated': allocation_id, 'allocations': allocations})
+
+        except Exception as e:
+            self._handle_request_exception(e)
+
+    @gen.coroutine
+    def delete(self, domain_name, *args):
+        try:
             data = json.loads(self.request.body)
             allocation_ids = data.get('allocationIds', [])
 
@@ -92,4 +91,7 @@ class Allocations(JsonHandler, PropertyHelper):
                 'allocations': allocations
             }
 
-        self._render_json(info)
+            self._render_json(info)
+            
+        except Exception as e:
+            self._handle_request_exception(e)

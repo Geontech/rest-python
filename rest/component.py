@@ -35,36 +35,45 @@ import json
 class Components(JsonHandler, PropertyHelper, PortHelper):
     @gen.coroutine
     def get(self, domain_name, app_id, comp_id=None):
-        if comp_id:
-            comp = yield self.redhawk.get_component(domain_name, app_id, comp_id)
+        try:
+            if comp_id:
+                comp = yield self.redhawk.get_component(domain_name, app_id, comp_id)
 
-            info = {
-                'name': comp.name,
-                'id': comp._id,
-                'started': comp._get_started(),
-                'ports': self.format_ports(comp.ports),
-                'properties': self.format_properties(comp._properties, comp.query([]))
-            }
-        else:
-            comps = yield self.redhawk.get_component_list(domain_name, app_id)
-            info = {'components': comps}
+                info = {
+                    'name': comp.name,
+                    'id': comp._id,
+                    'started': comp._get_started(),
+                    'ports': self.format_ports(comp.ports),
+                    'properties': self.format_properties(comp._properties, comp.query([]))
+                }
+            else:
+                comps = yield self.redhawk.get_component_list(domain_name, app_id)
+                info = {'components': comps}
 
-        self._render_json(info)
+            self._render_json(info)
+        except Exception as e:
+            self._handle_request_exception(e)
 
 
 class ComponentProperties(JsonHandler, PropertyHelper):
     @gen.coroutine
     def get(self, domain, application, component):
-        comp = yield self.redhawk.get_component(domain, application, component)
+        try:
+            comp = yield self.redhawk.get_component(domain, application, component)
 
-        self._render_json({
-            'properties': self.format_properties(comp._properties, comp.query([]))
-        })
+            self._render_json({
+                'properties': self.format_properties(comp._properties, comp.query([]))
+            })
+        except Exception as e:
+            self._handle_request_exception(e)
 
     @gen.coroutine
     def put(self, domain, application, component):
-        data = json.loads(self.request.body)
-        json_props = data.get('properties', [])
-        changes = self.unformat_properties(json_props)
+        try:
+            data = json.loads(self.request.body)
+            json_props = data.get('properties', [])
+            changes = self.unformat_properties(json_props)
 
-        yield self.redhawk.component_configure(domain, application, component, changes)
+            yield self.redhawk.component_configure(domain, application, component, changes)
+        except Exception as e:
+            self._handle_request_exception(e)

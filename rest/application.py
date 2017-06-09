@@ -35,32 +35,64 @@ import json
 class Applications(JsonHandler, PropertyHelper, PortHelper):
     @gen.coroutine
     def get(self, domain_name, app_id=None):
+        try:
+            if app_id:
+                app = yield self.redhawk.get_application(domain_name, app_id)
+                comps = yield self.redhawk.get_component_list(domain_name, app_id)
 
-        if app_id:
-            app = yield self.redhawk.get_application(domain_name, app_id)
-            comps = yield self.redhawk.get_component_list(domain_name, app_id)
+                info = {
+                    'id': app._get_identifier(),
+                    'name': app.name,
+                    'started': app._get_started(),
+                    'components': comps,
+                    'ports': self.format_ports(app.ports),
+                    'properties': self.format_properties(app._externalProps, app.query([]))
+                }
+            else:
+                apps = yield self.redhawk.get_application_list(domain_name)
+                wfs = yield self.redhawk.get_available_applications(domain_name)
 
-            info = {
-                'id': app._get_identifier(),
-                'name': app.name,
-                'started': app._get_started(),
-                'components': comps,
-                'ports': self.format_ports(app.ports),
-                'properties': self.format_properties(app._externalProps, app.query([]))
-            }
-        else:
-            apps = yield self.redhawk.get_application_list(domain_name)
-            wfs = yield self.redhawk.get_available_applications(domain_name)
+                info = {'applications': apps, 'waveforms': wfs}
 
-            info = {'applications': apps, 'waveforms': wfs}
-
-        self._render_json(info)
+            self._render_json(info)
+        except Exception as e:
+            self._handle_request_exception(e)
 
     @gen.coroutine
     def post(self, domain_name, app_id=None):
-        data = json.loads(self.request.body)
+        try:
+            data = json.loads(self.request.body)
 
-        if app_id:
+            if app_id:
+                app = yield self.redhawk.get_application(domain_name, app_id)
+
+                started = data['started']
+                if started:
+                    app.start()
+                else:
+                    app.stop()
+
+                self._render_json({'id': app_id, 'started': app._get_started()})
+            else:
+                app_name = str(data['name'])
+
+                app_id = yield self.redhawk.launch_application(domain_name, app_name)
+                apps = yield self.redhawk.get_application_list(domain_name)
+
+                if 'started' in data and data['started']:
+                    app = yield self.redhawk.get_application(domain_name, app_id)
+                    app.start()
+
+                self._render_json({'launched': app_id, 'applications': apps})
+
+        except Exception as e:
+            self._handle_request_exception(e)
+
+    @gen.coroutine
+    def put(self, domain_name, app_id=None):
+        try:
+            data = json.loads(self.request.body)
+
             app = yield self.redhawk.get_application(domain_name, app_id)
 
             started = data['started']
@@ -70,35 +102,16 @@ class Applications(JsonHandler, PropertyHelper, PortHelper):
                 app.stop()
 
             self._render_json({'id': app_id, 'started': app._get_started()})
-        else:
-            app_name = str(data['name'])
-
-            app_id = yield self.redhawk.launch_application(domain_name, app_name)
-            apps = yield self.redhawk.get_application_list(domain_name)
-
-            if 'started' in data and data['started']:
-                app = yield self.redhawk.get_application(domain_name, app_id)
-                app.start()
-
-            self._render_json({'launched': app_id, 'applications': apps})
-
-    @gen.coroutine
-    def put(self, domain_name, app_id=None):
-        data = json.loads(self.request.body)
-
-        app = yield self.redhawk.get_application(domain_name, app_id)
-
-        started = data['started']
-        if started:
-            app.start()
-        else:
-            app.stop()
-
-        self._render_json({'id': app_id, 'started': app._get_started()})
+        except Exception as e:
+            self._handle_request_exception(e)
 
     @gen.coroutine
     def delete(self, domain_name, app_id):
-        yield self.redhawk.release_application(domain_name, app_id)
-        apps = yield self.redhawk.get_application_list(domain_name)
+        try:
+            yield self.redhawk.release_application(domain_name, app_id)
+            apps = yield self.redhawk.get_application_list(domain_name)
 
-        self._render_json({'released': app_id, 'applications': apps})
+            self._render_json({'released': app_id, 'applications': apps})
+            
+        except Exception as e:
+            self._handle_request_exception(e)

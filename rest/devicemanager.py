@@ -33,22 +33,24 @@ from helper import PropertyHelper, PortHelper
 class DeviceManagers(JsonHandler, PropertyHelper, PortHelper):
     @gen.coroutine
     def get(self, domain_name, dev_mgr_id=None):
+        try:
+            if dev_mgr_id:
+                dev_mgr = yield self.redhawk.get_device_manager(domain_name, dev_mgr_id)
+                services = yield self.redhawk.get_service_list(domain_name, dev_mgr_id)
+                devices = yield self.redhawk.get_device_list(domain_name, dev_mgr_id)
+                prop_dict = self.format_properties(dev_mgr._properties, dev_mgr.query([]))
 
-        if dev_mgr_id:
-            dev_mgr = yield self.redhawk.get_device_manager(domain_name, dev_mgr_id)
-            services = yield self.redhawk.get_service_list(domain_name, dev_mgr_id)
-            devices = yield self.redhawk.get_device_list(domain_name, dev_mgr_id)
-            prop_dict = self.format_properties(dev_mgr._properties, dev_mgr.query([]))
+                info = {
+                    'name': dev_mgr.name,
+                    'id': dev_mgr.id,
+                    'properties': prop_dict,
+                    'devices': devices,
+                    'services': services
+                }
+            else:
+                managers = yield self.redhawk.get_device_manager_list(domain_name)
+                info = {'deviceManagers': managers}
 
-            info = {
-                'name': dev_mgr.name,
-                'id': dev_mgr.id,
-                'properties': prop_dict,
-                'devices': devices,
-                'services': services
-            }
-        else:
-            managers = yield self.redhawk.get_device_manager_list(domain_name)
-            info = {'deviceManagers': managers}
-
-        self._render_json(info)
+            self._render_json(info)
+        except Exception as e:
+            self._handle_request_exception(e)
