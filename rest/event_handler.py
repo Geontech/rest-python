@@ -98,10 +98,14 @@ class EventChannelHandler(JsonHandler, PropertyHelper):
             number = int(float(number))
         except:
             number = 150
-        eventChannels = yield self.redhawk.get_all_event_channels(number)
-        eventChannels = list(set(eventChannels))
-        channels = {'eventChannels':eventChannels}
-        self._render_json(channels)
+            
+        try:
+            eventChannels = yield self.redhawk.get_all_event_channels(number)
+            eventChannels = list(set(eventChannels))
+            channels = {'eventChannels':eventChannels}
+            self._render_json(channels)
+        except Exception as e:
+            self._handle_request_exception(e)
 
 
         

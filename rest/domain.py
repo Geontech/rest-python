@@ -34,49 +34,55 @@ from helper import PropertyHelper
 class DomainInfo(JsonHandler, PropertyHelper):
     @gen.coroutine
     def get(self, domain_name=None, *args):
-        if domain_name:
-            event_channels = yield self.redhawk.get_domain_event_channels(domain_name)
-            if not args:
-                dom_info = yield self.redhawk.get_domain_info(domain_name)
-                propertySet = yield self.redhawk.get_domain_properties(domain_name)
-                apps = yield self.redhawk.get_application_list(domain_name)
-                device_managers = yield self.redhawk.get_device_manager_list(domain_name)
-                allocations = yield self.redhawk.get_allocation_list(domain_name)
-                fs = yield self.redhawk.get_path(domain_name, '')
+        try:
+            if domain_name:
+                event_channels = yield self.redhawk.get_domain_event_channels(domain_name)
+                if not args:
+                    dom_info = yield self.redhawk.get_domain_info(domain_name)
+                    propertySet = yield self.redhawk.get_domain_properties(domain_name)
+                    apps = yield self.redhawk.get_application_list(domain_name)
+                    device_managers = yield self.redhawk.get_device_manager_list(domain_name)
+                    allocations = yield self.redhawk.get_allocation_list(domain_name)
+                    fs = yield self.redhawk.get_path(domain_name, '')
 
-                info = {
-                    'id': dom_info._get_identifier(),
-                    'name': dom_info.name,
-                    'properties': self.format_properties(propertySet, dom_info.query([])),
-                    'eventChannels': event_channels,
-                    'applications': apps,
-                    'deviceManagers': device_managers,
-                    'allocations': allocations,
-                    'fs': fs
-                }
+                    info = {
+                        'id': dom_info._get_identifier(),
+                        'name': dom_info.name,
+                        'properties': self.format_properties(propertySet, dom_info.query([])),
+                        'eventChannels': event_channels,
+                        'applications': apps,
+                        'deviceManagers': device_managers,
+                        'allocations': allocations,
+                        'fs': fs
+                    }
 
-        else:
-            domains = yield self.redhawk.get_domain_list()
-            info = {'domains': domains}
-        self._render_json(info)
+            else:
+                domains = yield self.redhawk.get_domain_list()
+                info = {'domains': domains}
+            self._render_json(info)
+        except Exception as e:
+            self._handle_request_exception(e)
 
 
 class DomainProperties(JsonHandler, PropertyHelper):
     @gen.coroutine
     def get(self, domain_name, prop_name=None):
-        dom_info = yield self.redhawk.get_domain_info(domain_name)
-        propertySet = yield self.redhawk.get_domain_properties(domain_name)
-        info = self.format_properties(propertySet, dom_info.query([]))
+        try:
+            dom_info = yield self.redhawk.get_domain_info(domain_name)
+            propertySet = yield self.redhawk.get_domain_properties(domain_name)
+            info = self.format_properties(propertySet, dom_info.query([]))
 
-        if prop_name:
-            value = None
-            for item in info:
-                if item['name'] == prop_name:
-                    value = item
+            if prop_name:
+                value = None
+                for item in info:
+                    if item['name'] == prop_name:
+                        value = item
 
-            if value:
-                self._render_json(value)
+                if value:
+                    self._render_json(value)
+                else:
+                    self._render_json({'error': "Could not find property"})
             else:
-                self._render_json({'error': "Could not find property"})
-        else:
-            self._render_json({'properties': info})
+                self._render_json({'properties': info})
+        except Exception as e:
+            self._handle_request_exception(e)

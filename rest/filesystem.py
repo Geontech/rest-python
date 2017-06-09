@@ -33,51 +33,71 @@ import json
 class FileSystem(JsonHandler):
     @gen.coroutine
     def get(self, domain_name, path):
-        info = yield self.redhawk.get_path(domain_name, str(path))
+        try:
+            info = yield self.redhawk.get_path(domain_name, str(path))
 
-        self._render_json(info)
+            self._render_json(info)
+        except Exception as e:
+            self._handle_request_exception(e)
 
     @gen.coroutine
     def post(self, domain_name, path):
-        if self.request.body:
-            data = json.loads(self.request.body)
+        try:
+            if self.request.body:
+                data = json.loads(self.request.body)
 
-            # Use the path in the URI as the destination and expect a path in the body as the source
-            if data.get('method') == 'copy' or data.get('method') == 'move':
-                fromPath = str(data['from_path'])
+                # Use the path in the URI as the destination and expect a path in the body as the source
+                method = data.get('method')
+                if method in ['copy', 'move']:
+                    fromPath = str(data['from_path'])
 
-                info = yield self.redhawk.move(domain_name, fromPath, str(path), data['method'] == 'copy')
-            # Create a directory or a file based on the path ending with a / or not. If a / is present
-            # but contents are also present, a file will be created instead of a directory
+                    info = yield self.redhawk.move(domain_name, fromPath, str(path), data['method'] == 'copy')
+                # Create a directory or a file based on the path ending with a / or not. If a / is present
+                # but contents are also present, a file will be created instead of a directory
+                elif method == 'create':
+                    contents = str(data.get('contents', ''))
+                    readOnly = data.get('read_only', False)
+
+                    info = yield self.redhawk.create(domain_name, str(path), contents, readOnly)
+                else:
+                    raise Exception('Unknown file system POST method: %s' % method)
             else:
-                contents = str(data.get('contents'))
-                readOnly = data.get('read_only', False)
-
-                info = yield self.redhawk.create(domain_name, str(path), contents, readOnly)
-        else:
-            # Create a directory or a file based on the path ending with a / or not.
-            info = yield self.redhawk.create(domain_name, str(path), None, False)
- 
-        self._render_json(info)
+                # Create a directory or a file based on the path ending with a / or not.
+                info = yield self.redhawk.create(domain_name, str(path), None, False)
+     
+            self._render_json(info)
+        except Exception as e:
+            self._handle_request_exception(e)
 
     @gen.coroutine
     def put(self, domain_name, path):
-        if self.request.body:
-            data = json.loads(self.request.body)
+        try:
+            if self.request.body:
+                data = json.loads(self.request.body)
+                method = data.get('method')
+                if method == 'append':
+                    contents = str(data.get('contents'))
 
-            if data.get('method') == 'append':
-                contents = str(data.get('contents'))
+                    info = yield self.redhawk.append(domain_name, str(path), contents)
+                elif method == 'replace':
+                    contents = str(data.get('contents'))
 
-                info = yield self.redhawk.append(domain_name, str(path), contents)
+                    info = yield self.redhawk.replace(domain_name, str(path), contents)
+                else:
+                    raise Exception('Unknown file system PUT method: %s' % method)
+
+                self._render_json(info)
             else:
-                contents = str(data.get('contents'))
+                raise Exception('File system PUT requires a body')
 
-                info = yield self.redhawk.replace(domain_name, str(path), contents)
-
-        self._render_json(info)
+        except Exception as e:
+            self._handle_request_exception(e)
 
     @gen.coroutine
     def delete(self, domain_name, path):
-        info = yield self.redhawk.remove(domain_name, str(path))
+        try:
+            info = yield self.redhawk.remove(domain_name, str(path))
 
-        self._render_json(info)
+            self._render_json(info)
+        except Exception as e:
+            self._handle_request_exception(e)

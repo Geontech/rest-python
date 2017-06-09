@@ -25,8 +25,8 @@ PropertyHelper -- Convert CORBA and RH Sandbox Properties into dictionaries (mor
 PortHelper -- Convert Port information into dict
 """
 
+from ossie.properties import __TYPE_MAP as CF_TYPE_MAP
 from ossie.utils.prop_helpers import Property, simpleProperty, structProperty, structSequenceProperty, sequenceProperty
-
 
 class PropertyHelper(object):
 
@@ -54,6 +54,14 @@ class PropertyHelper(object):
         return prop_list
 
     @staticmethod
+    def _clean_name(prop):
+        if hasattr(prop, 'clean_name') and prop.clean_name.strip():
+            clean_name = prop.clean_name
+        else:
+            clean_name = prop.id.split('::')[-1]
+        return clean_name
+
+    @staticmethod
     def _filter_propertySet(propertySet, properties):
         filteredPropertySet = []
 
@@ -78,10 +86,7 @@ class PropertyHelper(object):
             except:
                 pass
 
-            if hasattr(prop, 'clean_name'):
-                clean_name = prop.clean_name
-            else:
-                clean_name = prop.id.split('::')[-1]
+            clean_name = PropertyHelper._clean_name(prop)
 
             p_dict = {
                 'id'        : prop.id,
@@ -185,29 +190,53 @@ class PropertyHelper(object):
 
     @staticmethod
     def __any_simple(corba_any):
-        return {'id': corba_any.id, 'scaType': 'simple', 'value': corba_any.value.value()}
+        return {
+            'id': corba_any.id,
+            'name': PropertyHelper._clean_name(corba_any),
+            'scaType': 'simple',
+            'value': corba_any.value.value(),
+            'type': PropertyHelper.__corba_to_cf_type(corba_any.value._t)
+            }
 
     @staticmethod
     def __any_struct(corba_any):
-        ret = {'id': corba_any.id, 'scaType': 'struct', 'value': []}
+        ret = {
+            'id': corba_any.id,
+            'name': PropertyHelper._clean_name(corba_any),
+            'scaType': 'struct',
+            'value': []
+            }
         for a in corba_any.value.value():
             ret['value'].append(PropertyHelper.__any_simple(a))
         return ret
 
     @staticmethod
     def __any_simple_seq(corba_any):
-        ret = {'id': corba_any.id, 'scaType': 'seq', 'value': []}
+        ret = {
+            'id': corba_any.id,
+            'name': PropertyHelper._clean_name(corba_any),
+            'scaType': 'simpleSeq',
+            'type': '',
+            'value': []
+            }
         for a in corba_any.value.value():
-            ret['value'].append(PropertyHelper.__any_simple(a))
+            if ret['type'] == '':
+                ret['type'] = PropertyHelper.__corba_to_cf_type(a.value._t)
+            ret['value'].append(a.value.value())
         return ret
 
     @staticmethod
     def __any_struct_seq(corba_any):
-        ret = {'id': corba_any.id, 'scaType': 'structSeq', 'value': []}
+        ret = {
+            'id': corba_any.id,
+            'name': PropertyHelper._clean_name(corba_any),
+            'scaType': 'structSeq',
+            'value': []
+            }
         for a in corba_any.value.value():
             value = []
             for m in a.value():
-                value.append(PropertyHelper.__any_simple(m))
+                value.append(PropertyHelper.__any_struct(m))
             ret['value'].append(value)
         return ret
 
@@ -226,6 +255,11 @@ class PropertyHelper(object):
                 return PropertyHelper.__any_seq(corba_any)
         else:
             return PropertyHelper.__any_simple(corba_any)
+
+    @staticmethod
+    def __corba_to_cf_type(ctype):
+        __FLIPPED_TYPE_MAP = {v[1] : (v[0], k) for (k, v) in CF_TYPE_MAP.iteritems() if not k.startswith('w')}
+        return __FLIPPED_TYPE_MAP[ctype][1]
 
 
 class PortHelper(object):
