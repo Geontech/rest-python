@@ -77,8 +77,6 @@ class ComponentTests(JsonTests):
     def test_not_found(self):
         json, resp = self._json_request('%s/components/ggsdfgfdg' % self.base_url, 404)
 
-        self._resource_not_found(json)
-
     def test_properties(self):
         comp_id = self.components[0]['id']
         json, resp = self._json_request('%s/components/%s' % (self.base_url, comp_id), 200)

@@ -81,10 +81,9 @@ class DeviceTests(JsonTests):
 
         self.assertTrue('started' in json)
         self.assertTrue('properties' in json)
+        self.assertProperties(json['properties'])
         self.assertTrue('ports' in json)
 
     def test_info_not_found(self):
         url, devices = self._get_dev_list()
         json, resp = self._json_request(url+"/devices/sdkafsdfhklasdfhkajl", 404)
-
-        self._resource_not_found(json)

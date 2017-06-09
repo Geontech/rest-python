@@ -1,0 +1,66 @@
+version: "3"
+volumes:
+    sdrroot:
+    rf_snapshots:
+
+services:
+    # OmniORB services
+    omni:
+        image: geontech/redhawk-omniserver
+        hostname: omni
+        ports:
+            - "2809:2809"
+            - "11169:11169"
+
+    # Standard REDHAWK SDR Domain
+    domain:
+        image: geontech/redhawk-domain
+        depends_on:
+            - omni
+        environment:
+            - DOMAINNAME=REDHAWK_DEV
+            - OMNISERVICEIP=omni
+        volumes:
+            - sdrroot:/var/redhawk/sdr
+
+    # Standard GPP 
+    gpp:
+        image: geontech/redhawk-gpp
+        depends_on:
+            - domain
+        environment:
+            - DOMAINNAME=REDHAWK_DEV
+            - NODENAME=GPP_Node
+            - GPPNAME=GPP
+            - OMNISERVICEIP=omni
+
+    # FEI FileReader Device runner mounted to the snapshot.
+    fei_file_reader:
+        image: geontech/redhawk-fei-filereader
+        build: http://github.com/GeonTech/FEI_FileReader.git
+        environment:
+            - DOMAINNAME=REDHAWK_DEV
+            - NODENAME=FEI_FR_Node
+            - OMNISERVICEIP=omni
+        volumes:
+            - rf_snapshots:/var/rf_snapshots
+
+    # REST-Python Unit Under Test (UUT)
+    rest:
+        image: geontech/redhawk-webserver
+        depends_on:
+            - domain
+            - gpp
+            - fei_file_reader
+        environment:
+            - OMNISERVICEIP=omni
+        ports:
+            - "8080:8080"
+        # 1. Mount the external rest-python
+        # 2. Share SDRROOT with the Domain for access to standard components in sandbox
+        # 3. Share RF_Snapshots with the FEI FileReader
+        volumes:
+            - ./:/opt/rest-python
+            - sdrroot:/var/redhawk/sdr
+            - rf_snapshots:/var/rf_snapshots
+        command: [bash, -l, -c, /opt/rest-python/test.sh]

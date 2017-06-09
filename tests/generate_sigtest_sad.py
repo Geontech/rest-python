@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env python
 #
 # This file is protected by Copyright. Please refer to the COPYRIGHT file
 # distributed with this source distribution.
@@ -19,24 +19,28 @@
 # along with this program.  If not, see http://www.gnu.org/licenses/.
 #
 
-# Absolute path to this script, e.g. /home/user/bin/foo.sh
-SCRIPT=$(readlink -f "$0")
-# Absolute path this script is in, thus /home/user/bin
-SCRIPTPATH=$(dirname "$SCRIPT")
-pyvenv="${SCRIPTPATH}/pyvenv"
+import os
+from ossie.utils import sb
 
-source /etc/profile.d/redhawk.sh
+from defaults import Default
 
-# Create a simple waveform for testing
-SIGTEST="$(python tests/generate_sigtest_sad.py)"
-RF_SNAPSHOT="$(python tests/generate_rf_snapshot.py)"
-RF_SNAPSHOT="${RF_SNAPSHOT##*$'\n'}"
+def main():
+    SDRROOT = os.environ['SDRROOT']
+    FILE_NAME = '{0}.sad.xml'.format(Default.WAVEFORM)
+    INSTALL_DIR = os.path.join(SDRROOT, 'dom', 'waveforms', Default.WAVEFORM)
+    INSTALL_FILE = os.path.join(INSTALL_DIR, FILE_NAME)
 
-# Clear virtual env
-./setup.sh install
+    # Make a simple waveform and write it to file
+    siggen = sb.launch(Default.COMPONENT)
+    waveform = sb.generateSADXML(Default.WAVEFORM)
 
-exec ${pyvenv} python ${SCRIPTPATH}/test.py $@
+    if not os.path.exists(INSTALL_DIR):
+        os.makedirs(INSTALL_DIR)
+    
+    with open(INSTALL_FILE, 'w+') as sad:
+        sad.write(waveform)
 
-# Clean up
-echo "Cleaning up ${SIGTEST} and ${RF_SNAPSHOT}"
-rm ${SIGTEST} ${RF_SNAPSHOT}
+    return INSTALL_FILE
+
+if __name__ == '__main__':
+    print main()

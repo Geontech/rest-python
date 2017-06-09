@@ -40,12 +40,14 @@ class DomainTests(JsonTests):
         self.assertTrue('name' in body)
         self.assertEquals(body['name'], Default.DOMAIN_NAME)
 
-        self.assertTrue('applications' in body)
-        self.assertTrue('deviceManagers' in body)
-        self.assertTrue('properties' in body)
         self.assertTrue('id' in body)
+        self.assertTrue('properties' in body)
+        self.assertProperties(body['properties'])
+        self.assertIdList(body, 'applications')
+        self.assertIdList(body, 'deviceManagers')
+        self.assertList(body, 'eventChannels')
+        self.assertList(body, 'allocations')
+        self.assertTrue('fs' in body)
 
     def test_info_not_found(self):
         body, resp = self._json_request("/domains/ldskfadjklfsdjkfasdl", 404)
-        print body
-        self._resource_not_found(body)
