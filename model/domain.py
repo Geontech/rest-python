@@ -120,7 +120,7 @@ class TopicConsumer (GenericEventConsumer):
         GenericEventConsumer.__init__(self, self.deliver, on_disconnect, filter, keep_structs)
         self.__listeners = []
         self.__domain = domain
-        self.__registration_id = domain + str(uuid.uuid4())
+        self.__registration_id = str(domain + str(uuid.uuid4()))
 
     @property
     def registration_id(self):
