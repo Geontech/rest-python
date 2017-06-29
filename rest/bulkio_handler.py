@@ -126,6 +126,7 @@ class BulkIOWebsocketHandler(CrossDomainSockets):
         logging.debug('Stream CLOSE')
         try:
             self.port.ref.disconnectPort(self._connectionId)
+            logging.info("Closed websocket to %s, %s", self.port, self._connectionId)
         except CORBA.TRANSIENT:
             pass 
         except Exception, e:
