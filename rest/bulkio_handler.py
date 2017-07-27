@@ -109,7 +109,7 @@ class BulkIOWebsocketHandler(CrossDomainSockets):
         try:
             ctrl = json.loads(message)
 
-            if (ctrl['type'] == Control.MaxWidth):
+            if (ctrl['type'] == ControlEnum.MaxWidth):
                 if 0 < ctrl['value']:
                     self._outputWidth = ctrl['value']
                     logging.info('Decimation requested to {0} samples'.format(ctrl['value']))
@@ -117,7 +117,7 @@ class BulkIOWebsocketHandler(CrossDomainSockets):
                     self._outputWidth = None
                     logging.info('Decimation disabled')
 
-            elif (ctrl['type'] == Control.MaxPPS):
+            elif (ctrl['type'] == ControlEnum.MaxPPS):
                 logging.warning('Packets per second (PPS) not implemented yet.')
         except Exception as e:
             self.write_message(dict(error='SystemError', message=str(e)))
