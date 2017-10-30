@@ -22,6 +22,7 @@ import logging
 
 from bulkio.bulkioInterfaces import BULKIO__POA
 from bulkio import sri
+from ossie.properties import props_to_dict
 from omniORB import CORBA
 
 # third party imports
@@ -165,6 +166,7 @@ class BulkIOWebsocketHandler(CrossDomainSockets):
                 self._outputWidth = None
 
         # Tack on SRI, Package, Deliver.
+        outSRI.keywords = props_to_dict(outSRI.keywords)
         packet = dict(
             streamID   = stream_id,
             T          = ts.__dict__,
