@@ -252,7 +252,7 @@ class PropertyHelper(object):
                 return PropertyHelper.__any_struct_seq(corba_any)
             # Simple sequence or empty struct sequence
             else:
-                return PropertyHelper.__any_seq(corba_any)
+                return PropertyHelper.__any_simple_seq(corba_any)
         else:
             return PropertyHelper.__any_simple(corba_any)
 
