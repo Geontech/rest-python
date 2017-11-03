@@ -23,13 +23,13 @@
     Asynchronous Tornado service for REDHAWK. Maps the functions
     in domain.py and caches the domain object.
 """
-
+import logging
 from _utils.tasking import background_task
 
 from domain import Domain, scan_domains, ResourceNotFound
 
 from ossie.properties import __TYPE_MAP as TYPE_MAP
-from ossie.properties import props_from_dict
+from ossie.properties import props_from_dict, props_to_dict
 
 from tornado.websocket import WebSocketClosedError
 from tornado import ioloop
@@ -200,13 +200,17 @@ class Redhawk(object):
             return property
 
     @staticmethod
+    # CF.Properties and dict() of { 'id': value, ... }
     def _get_prop_changes(current_props, new_properties):
         changes = {}
         for prop in current_props:
             if prop.id in new_properties:
                 if new_properties[prop.id] != prop.queryValue():
-                    TYPE = TYPE_MAP.get(prop.type, [type(prop.queryValue())])
-                    changes[str(prop.id)] = (TYPE[0]) (Redhawk._clean_property(new_properties[prop.id]))
+                    changes[str(prop.id)] = prop.fromAny(
+                        prop.toAny(
+                            Redhawk._clean_property(new_properties[prop.id])
+                            )
+                        )
         return props_from_dict(changes)
 
     ##############################
