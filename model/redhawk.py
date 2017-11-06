@@ -201,11 +201,12 @@ class Redhawk(object):
 
     @staticmethod
     # CF.Properties and dict() of { 'id': value, ... }
-    def _get_prop_changes(current_props, new_properties):
+    # Use force to treat all ID matches as required changes
+    def _get_prop_changes(current_props, new_properties, force=False):
         changes = {}
         for prop in current_props:
             if prop.id in new_properties:
-                if new_properties[prop.id] != prop.queryValue():
+                if new_properties[prop.id] != prop.queryValue() or force:
                     changes[str(prop.id)] = prop.fromAny(
                         prop.toAny(
                             Redhawk._clean_property(new_properties[prop.id])
@@ -279,7 +280,7 @@ class Redhawk(object):
     @background_task
     def device_allocate(self, domain_name, device_manager_id, device_id, new_properties):
         dev = self._get_device(domain_name, device_manager_id, device_id)
-        changes = Redhawk._get_prop_changes(dev._properties, new_properties)
+        changes = Redhawk._get_prop_changes(dev._properties, new_properties, True)
         try:
             return dev.allocateCapacity(changes), ''
         except Exception as e:
@@ -288,9 +289,10 @@ class Redhawk(object):
     @background_task
     def device_deallocate(self, domain_name, device_manager_id, device_id, new_properties):
         dev = self._get_device(domain_name, device_manager_id, device_id)
-        changes = Redhawk._get_prop_changes(dev._properties, new_properties)
+        changes = Redhawk._get_prop_changes(dev._properties, new_properties, True)
         try:
-            return dev.deallocateCapacity(changes), ''
+            dev.deallocateCapacity(changes)
+            return True, ''
         except Exception as e:
             return False, "{0}".format(e);
 
