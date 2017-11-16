@@ -20,7 +20,7 @@ REDHAWK REST Python is licensed under the GNU Lesser General Public License (LGP
 
 ## Running
 
-For Development/Test environments there are scripts to automatically create a local environment and run the server.
+For Development/Test environments there are scripts to automatically create a local environment and run the server. You will need to install the `virtualenv` python package before using the commands below.
 
     ./setup.sh install
     ./start.sh --port=<desired_port>
@@ -39,4 +39,3 @@ Once running the REST Interface can be tested at `http://localhost:<desired_port
 ## Deploying Applications
 
 You can either install your application in `apps` for REST-Python to serve them, or deploy them with a separate server (e.g., NodeJS).  REST-Python supports cross-domain responses to REST and Websocket requests to facilitate dual- or multi-server configurations to completely decouple the REDHAWK environment from the web application environment.  (See [Docker-REDHAWK's](http://github.com/GeonTech/docker-redhawk) `geontech/redhawk-webserver` image.)
-
