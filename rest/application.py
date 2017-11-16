@@ -50,9 +50,8 @@ class Applications(JsonHandler, PropertyHelper, PortHelper):
                 }
             else:
                 apps = yield self.redhawk.get_application_list(domain_name)
-                wfs = yield self.redhawk.get_available_applications(domain_name)
 
-                info = {'applications': apps, 'waveforms': wfs}
+                info = {'applications': apps}
 
             self._render_json(info)
         except Exception as e:

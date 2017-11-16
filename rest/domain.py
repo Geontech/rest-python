@@ -41,6 +41,7 @@ class DomainInfo(JsonHandler, PropertyHelper):
                     dom_info = yield self.redhawk.get_domain_info(domain_name)
                     propertySet = yield self.redhawk.get_domain_properties(domain_name)
                     apps = yield self.redhawk.get_application_list(domain_name)
+                    wfs = yield self.redhawk.get_available_applications(domain_name)
                     device_managers = yield self.redhawk.get_device_manager_list(domain_name)
                     allocations = yield self.redhawk.get_allocation_list(domain_name)
                     fs = yield self.redhawk.get_path(domain_name, '')
@@ -51,6 +52,7 @@ class DomainInfo(JsonHandler, PropertyHelper):
                         'properties': self.format_properties(propertySet, dom_info.query([])),
                         'eventChannels': event_channels,
                         'applications': apps,
+                        'waveforms': wfs,
                         'deviceManagers': device_managers,
                         'allocations': allocations,
                         'fs': fs
