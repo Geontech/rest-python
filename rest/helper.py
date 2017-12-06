@@ -207,7 +207,10 @@ class PropertyHelper(object):
             'value': []
             }
         for a in corba_any.value.value():
-            ret['value'].append(PropertyHelper.__any_simple(a))
+            if 'orb.create_sequence_tc' in str(a.value._t):
+                ret['value'].append(PropertyHelper.__any_simple_seq(a))
+            else:
+                ret['value'].append(PropertyHelper.__any_simple(a))
         return ret
 
     @staticmethod
