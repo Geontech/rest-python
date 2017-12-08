@@ -223,9 +223,27 @@ class PropertyHelper(object):
             'value': []
             }
         for a in corba_any.value.value():
-            if ret['type'] == '':
-                ret['type'] = PropertyHelper.__corba_to_cf_type(a.value._t)
-            ret['value'].append(a.value.value())
+            if hasattr(a, 'value'):
+                # The item in the sequence is a CORBA type
+                if ret['type'] == '':
+                    ret['type'] = PropertyHelper.__corba_to_cf_type(a.value._t)
+                ret['value'].append(a.value.value())
+            else:
+                # The item in the sequence is a Python type
+                if ret['type'] == '':
+                    # Convert to CF type
+                    aType = str(type(a))
+                    if 'str' in aType:
+                        ret['type'] = 'string'
+                    elif ('int' in aType) or ('long' in aType):
+                        ret['type'] = 'long'
+                    elif 'float' in aType:
+                        ret['type'] = 'double'
+                    elif 'bool' in aType: 
+                        ret['type'] = 'boolean'
+                    else:
+                        ret['type'] = aType
+                ret['value'].append(a)
         return ret
 
     @staticmethod
