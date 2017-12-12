@@ -112,8 +112,10 @@ class PropertyHelper(object):
             p_dict.pop('type', None)
             p_dict['value'] = []
             for _, m in prop.members.iteritems():
-                m_dict = _handle_simple(m)
-                p_dict['value'].append( m_dict )
+                if type(m) == sequenceProperty:
+                    p_dict['value'].append( _handle_simpleseq(m) )
+                else:
+                    p_dict['value'].append( _handle_simple(m) )
             p_dict['scaType'] = 'struct'
             return p_dict
 
