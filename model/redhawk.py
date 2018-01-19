@@ -23,7 +23,6 @@
     Asynchronous Tornado service for REDHAWK. Maps the functions
     in domain.py and caches the domain object.
 """
-import logging
 from _utils.tasking import background_task
 
 from domain import Domain, scan_domains, ResourceNotFound
@@ -32,7 +31,7 @@ from ossie.properties import __TYPE_MAP as TYPE_MAP
 from ossie.properties import props_from_dict, props_to_dict
 
 from tornado.websocket import WebSocketClosedError
-from tornado import ioloop
+from tornado import ioloop, log
 
 import collections
 
@@ -166,6 +165,10 @@ class Redhawk(object):
         dom = self._get_domain(domain_name)
         return dom.find_app(app_id)
 
+    def _get_application(self, domain_name, app_id):
+        dom = self._get_domain(domain_name)
+        return dom.find_app(app_id)
+
     @background_task
     def get_application_list(self, domain_name):
         dom = self._get_domain(domain_name)
@@ -185,6 +188,31 @@ class Redhawk(object):
     def release_application(self, domain_name, app_id):
         dom = self._get_domain(domain_name)
         return dom.release(app_id)
+
+    @background_task
+    def application_configure(self, domain_name, app_id, new_properties):
+        app = self._get_application(domain_name, app_id)
+        props = Redhawk._application_externalProps(app)
+
+        changes = Redhawk._get_prop_changes(props, new_properties)
+        return app.configure(changes)
+
+    '''
+    Helper function to streamline getting a property list similar to what one
+    gets from components, devices, etc.
+    '''
+    @staticmethod
+    def _application_externalProps(app):
+        props = []
+        for epid, t in app._externalProps.iteritems():
+            pid = t[0] # First item is the property id relative to the component
+            cid = t[1] # Second item in tuple is prefix of component identifier
+            for comp in app.comps:
+                if comp.identifier.startswith(cid):
+                    for prop in comp._properties:
+                        if prop.id == pid:
+                            props.append(prop)
+        return props
 
     ##############################
     # COMMON PROPERTIES
