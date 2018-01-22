@@ -31,7 +31,7 @@ from ossie.properties import __TYPE_MAP as TYPE_MAP
 from ossie.properties import props_from_dict, props_to_dict
 
 from tornado.websocket import WebSocketClosedError
-from tornado import ioloop, log
+from tornado import ioloop
 
 import collections
 
