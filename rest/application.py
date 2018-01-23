@@ -31,7 +31,6 @@ from helper import PropertyHelper, PortHelper
 
 import json
 
-
 class Applications(JsonHandler, PropertyHelper, PortHelper):
     @gen.coroutine
     def get(self, domain_name, app_id=None):
@@ -39,6 +38,7 @@ class Applications(JsonHandler, PropertyHelper, PortHelper):
             if app_id:
                 app = yield self.redhawk.get_application(domain_name, app_id)
                 comps = yield self.redhawk.get_component_list(domain_name, app_id)
+                props = app._getPropertySet()
 
                 info = {
                     'id': app._get_identifier(),
@@ -46,7 +46,7 @@ class Applications(JsonHandler, PropertyHelper, PortHelper):
                     'started': app._get_started(),
                     'components': comps,
                     'ports': self.format_ports(app.ports),
-                    'properties': self.format_properties(app._externalProps, app.query([]))
+                    'properties': self.format_properties(props, app.query([]))
                 }
             else:
                 apps = yield self.redhawk.get_application_list(domain_name)
@@ -114,3 +114,28 @@ class Applications(JsonHandler, PropertyHelper, PortHelper):
             
         except Exception as e:
             self._handle_request_exception(e)
+
+class ApplicationProperties(JsonHandler, PropertyHelper):
+    @gen.coroutine
+    def get(self, domain, app_id):
+        try:
+            app = yield self.redhawk.get_application(domain, app_id)
+            props = app._getPropertySet()
+
+            self._render_json({
+                'properties': self.format_properties(props, app.query([]))
+            })
+        except Exception as e:
+            self._handle_request_exception(e)
+
+    @gen.coroutine
+    def put(self, domain, app_id):
+        try:
+            data = json.loads(self.request.body)
+            json_props = data.get('properties', [])
+            changes = self.unformat_properties(json_props)
+
+            yield self.redhawk.application_configure(domain, app_id, changes)
+        except Exception as e:
+            self._handle_request_exception(e)
+

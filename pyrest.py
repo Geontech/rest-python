@@ -23,7 +23,7 @@ import time
 
 from rest.domain import DomainInfo, DomainProperties
 from rest.allocation import Allocations
-from rest.application import Applications
+from rest.application import Applications, ApplicationProperties
 from rest.component import Components, ComponentProperties
 from rest.devicemanager import DeviceManagers
 from rest.device import Devices, DeviceProperties
@@ -119,6 +119,10 @@ class Application(tornado.web.Application):
                 dict(redhawk=redhawk, kind='application')),
             (_APPLICATION_PATH + _ID + _BULKIO_PATH, BulkIOWebsocketHandler, 
                 dict(redhawk=redhawk, kind='application', _ioloop=_ioloop)),
+            (_APPLICATION_PATH + _ID + _PROPERTIES_PATH + _LIST, ApplicationProperties,
+                dict(redhawk=redhawk)),
+            (_APPLICATION_PATH + _ID + _PROPERTIES_PATH + _ID, ApplicationProperties,
+                dict(redhawk=redhawk)),
 
             # Components
             (_COMPONENT_PATH + _LIST, Components, dict(redhawk=redhawk)),
