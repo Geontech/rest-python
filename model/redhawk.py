@@ -35,7 +35,7 @@ from tornado.websocket import WebSocketClosedError
 from tornado import ioloop, log
 
 import collections
-
+import copy
 
 class Redhawk(object):
     __domains = None
@@ -216,8 +216,9 @@ class Redhawk(object):
                     for prop in comp._properties:
                         log.app_log.debug('Checking {} == {}'.format(prop.id, pid))
                         if prop.id == pid:
-                            prop.id = epid;
-                            props.append(prop)
+                            eprop = copy.copy(prop)
+                            eprop.id = epid;
+                            props.append(eprop)
                             log.app_log.debug('Found external property {} -> {}'.format(epid, pid))
                             break;
                     break;
