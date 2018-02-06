@@ -193,9 +193,36 @@ class Redhawk(object):
     @background_task
     def application_configure(self, domain_name, app_id, new_properties):
         app = self._get_application(domain_name, app_id)
-        props = app._getPropertySet()
+        props = Redhawk._application_externalProps(app)
         changes = Redhawk._get_prop_changes(props, new_properties)
         return app.configure(changes)
+
+    '''
+    Helper function to streamline getting a property list similar to what one
+    gets from components, devices, etc.  This can duplicate external properties
+    listed by the assembly controller in the event the user wants to make some
+    external under a namespaced ID.
+    '''
+    @staticmethod
+    def _application_externalProps(app):
+        props = app._getPropertySet()
+        for epid, t in app._externalProps.iteritems():
+            pid = t[0] # First item is the property id relative to the component
+            cid = t[1] # Second item in tuple is prefix of component identifier
+            log.app_log.debug('Looking for {}: {}'.format(cid, pid))
+            for comp in app.comps:
+                if comp.identifier.split(':')[0] == cid:
+                    log.app_log.debug('Found component')
+                    for prop in comp._properties:
+                        log.app_log.debug('Checking {} == {}'.format(prop.id, pid))
+                        if prop.id == pid:
+                            prop.id = epid;
+                            props.append(prop)
+                            log.app_log.debug('Found external property {} -> {}'.format(epid, pid))
+                            break;
+                    break;
+        log.app_log.debug('All properties: {}'.format(props))
+        return props
 
     ##############################
     # COMMON PROPERTIES

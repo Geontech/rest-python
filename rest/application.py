@@ -38,7 +38,7 @@ class Applications(JsonHandler, PropertyHelper, PortHelper):
             if app_id:
                 app = yield self.redhawk.get_application(domain_name, app_id)
                 comps = yield self.redhawk.get_component_list(domain_name, app_id)
-                props = app._getPropertySet()
+                props = self.redhawk._application_externalProps(app)
 
                 info = {
                     'id': app._get_identifier(),
@@ -120,7 +120,7 @@ class ApplicationProperties(JsonHandler, PropertyHelper):
     def get(self, domain, app_id):
         try:
             app = yield self.redhawk.get_application(domain, app_id)
-            props = app._getPropertySet()
+            props = self.redhawk._application_externalProps(app)
 
             self._render_json({
                 'properties': self.format_properties(props, app.query([]))
