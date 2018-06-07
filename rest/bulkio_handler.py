@@ -29,6 +29,7 @@ from omniORB import CORBA
 from tornado import ioloop, gen
 from tornado import websocket
 
+import time
 import json
 import bulkio_limiter
 
@@ -250,7 +251,7 @@ class BulkIOWebsocketHandler(CrossDomainSockets):
     def _pushSRI(self, newSRI):
         origSRI, changed = self._getSRI(newSRI.streamID)
         if origSRI is not None:
-            changed = sri.compareSRI(origSRI, newSRI)
+            changed = sri.compare(origSRI, newSRI)
         self._SRIs[newSRI.streamID] = (newSRI, changed)
 
     def _getSRI(self, streamID):
@@ -314,3 +315,4 @@ class BulkIOWebsocketHandler(CrossDomainSockets):
         except websocket.WebSocketClosedError:
             logging.debug('Received WebSocketClosedError. Ignoring')
             self.close()
+            x = yield gen.Task(self._ioloop.add_timeout, time.time() + .5)
