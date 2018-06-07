@@ -38,6 +38,8 @@ services:
     fei_file_reader:
         image: geontech/redhawk-fei-filereader
         build: http://github.com/GeonTech/FEI_FileReader.git
+        depends_on:
+            - domain
         environment:
             - DOMAINNAME=REDHAWK_DEV
             - NODENAME=FEI_FR_Node
