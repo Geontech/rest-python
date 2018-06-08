@@ -17,7 +17,7 @@
 # along with this program.  If not, see http://www.gnu.org/licenses/.
 #
 
-FROM geontech/redhawk-runtime:VERSION
+FROM geontech/redhawk-runtime:2.0.8
 LABEL name="REST-Python Web Server" \
     description="Geon's Fork of REST-Python" \
     maintainer="Thomas Goodwin <btgoodwin@geontech.com>"
@@ -43,12 +43,14 @@ RUN yum install -y \
 RUN curl https://bootstrap.pypa.io/get-pip.py | python && \
     pip install -U pip
 
-# Install the rest-python server
-COPY . /opt/rest-python
+# Install the rest-python server requirements
+COPY ./setup.sh ./pyvenv ./requirements.txt /opt/rest-python/
 WORKDIR /opt/rest-python
-RUN ./setup.sh install && \
-    pip install -r requirements.txt && \
-    cp docker/rest-python.conf /etc/supervisor.d/rest-python.conf && \
+RUN ./setup.sh install && pip install -r requirements.txt
+
+# Install the rest of the rest-python server and launcher
+COPY . /opt/rest-python
+RUN cp docker/rest-python.conf /etc/supervisor.d/rest-python.conf && \
     cp docker/kill_supervisor.py /usr/bin/kill_supervisor.py && \
     chmod u+x /usr/bin/kill_supervisor.py
 

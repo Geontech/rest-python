@@ -39,3 +39,32 @@ Once running the REST Interface can be tested at `http://localhost:<desired_port
 ## Deploying Applications
 
 You can either install your application in `apps` for REST-Python to serve them, or deploy them with a separate server (e.g., NodeJS).  REST-Python supports cross-domain responses to REST and Websocket requests to facilitate dual- or multi-server configurations to completely decouple the REDHAWK environment from the web application environment.  (See [Docker-REDHAWK's](http://github.com/GeonTech/docker-redhawk) `geontech/redhawk-webserver` image.)
+
+## Testing
+
+If you would like to test REST-Python changes in a functional domain, download Docker-CE and Docker Compose for your operating system.  The process takes 3 parts:
+
+ 1. Your locally-built instance of the webserver image
+ 2. Running the `tests/docker-compose.yml` stack with your webserver image
+ 3. Using `docker-compose exec` to start the tests script.
+
+ > Note: Verify the Dockerfile version of the parent image (`FROM...`) and the compose file vs. the version of REDHAWK you want to test against.  You can export `REDHAWK_VERSION` set to that version prior to running `docker-compose` to simplify changing versions of the infrastructure.
+
+The process is shown here:
+
+```
+cd tests
+export TEST_IMAGE=test-webserver
+docker-compose up -d --build
+docker-compose exec -T rest \
+    bash -l -c 'yum install -y rh.FileWriter rh.SigGen && ./test.sh'
+```
+
+If you make further changes and want to update the webserver image and container (the service is `rest` in the compose file), you can recreate the container without tearing down the entire compose by doing the following:
+
+```
+docker-compose stop rest
+docker-compose up --build -d rest
+```
+
+You would then repeat the `exec` command from above.
