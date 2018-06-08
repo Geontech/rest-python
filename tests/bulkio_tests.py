@@ -143,7 +143,6 @@ class BulkIOTests(JsonTests, AsyncHTTPTestCase, LogTrapTestCase):
         keyword_fails = 0
         keyword_fails_limit = 100
         col_rf = 100
-        col_rf_limit = 200
         d, r = yield self._async_json_request(
             "%s/properties" % self.base_url, 200, 'PUT',
             {'properties': [
@@ -165,7 +164,7 @@ class BulkIOTests(JsonTests, AsyncHTTPTestCase, LogTrapTestCase):
                         self.fail("SRI did not change within {0} pushes".format(
                             change_fails_limit))
                         break
-                logging.info('SRI Changed detected')
+                logging.debug('SRI Changed detected')
 
                 # Verify the change is what we expected, COL_RF keyword
                 self.assertIn('SRI', packet)
@@ -175,8 +174,8 @@ class BulkIOTests(JsonTests, AsyncHTTPTestCase, LogTrapTestCase):
                 self.assertIn('COL_RF', keywords)
                 new_col_rf = int(keywords.get('COL_RF', 0))
 
-                logging.info('SRI: {0}'.format(sri))
-                logging.info('keywords: {0}'.format(keywords))
+                logging.debug('SRI: {0}'.format(sri))
+                logging.debug('keywords: {0}'.format(keywords))
 
                 if col_rf != new_col_rf:
                     keyword_fails += 1
