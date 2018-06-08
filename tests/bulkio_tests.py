@@ -48,21 +48,21 @@ class BulkIOTests(JsonTests, AsyncHTTPTestCase, LogTrapTestCase):
 
     def setUp(self):
         super(JsonTests, self).setUp()
-        json, resp = self._json_request(
+        json_msg, resp = self._json_request(
             '/domains/%s/applications' % Default.DOMAIN_NAME,
             200,
             'POST',
-            {'name': Default.WAVEFORM,
-             'started': True }
+            {'name': Default.WAVEFORM, 'started': True }
         )
-        self.assertTrue('launched' in json)
-        self.base_url = '/domains/%s/applications/%s' % (Default.DOMAIN_NAME, json['launched'])
+        self.assertTrue('launched' in json_msg)
+        self.base_url = '/domains/%s/applications/%s' % (Default.DOMAIN_NAME, json_msg['launched'])
+        json_msg, resp = self._json_request(self.base_url, 200)
 
-        json, resp = self._json_request(self.base_url, 200)
-        self.assertList(json, 'components')
-        self.assertTrue(json['components'])
-
-        self.components = json['components']
+        self.assertIn('started', json_msg)
+        self.assertTrue(json_msg['started'])
+        self.assertList(json_msg, 'components')
+        self.assertTrue(json_msg['components'])
+        self.components = json_msg['components']
 
     def tearDown(self):
         self._json_request(
