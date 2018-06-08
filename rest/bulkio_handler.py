@@ -57,8 +57,8 @@ class BulkIOWebsocketHandler(CrossDomainSockets):
 
         # For on-the-fly per-client down-sampling
         # Current options: 0=NoLimit, else=Limit
-        self._xMax = 1024
-        self._yMax = 1024
+        self._xMax = 0
+        self._yMax = 0
 
         # The ACTIVE on-the-fly per-client zooming parameters
         # These are set from the STAGED values from a xZoomIn/yZoomIn command
