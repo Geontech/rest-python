@@ -21,26 +21,37 @@
 
 import os
 from ossie.utils import sb
+from ossie.utils import redhawk
 
 from defaults import Default
 
 def main():
-    SDRROOT = os.environ['SDRROOT']
     FILE_NAME = '{0}.sad.xml'.format(Default.WAVEFORM)
-    INSTALL_DIR = os.path.join(SDRROOT, 'dom', 'waveforms', Default.WAVEFORM)
+    INSTALL_DIR = os.path.join('/', 'waveforms', Default.WAVEFORM)
     INSTALL_FILE = os.path.join(INSTALL_DIR, FILE_NAME)
 
     # Make a simple waveform and write it to file
-    siggen = sb.launch(Default.COMPONENT)
-    waveform = sb.generateSADXML(Default.WAVEFORM)
+    sb.launch(Default.COMPONENT)
+    waveform_xml = sb.generateSADXML(Default.WAVEFORM)
 
-    if not os.path.exists(INSTALL_DIR):
-        os.makedirs(INSTALL_DIR)
-    
-    with open(INSTALL_FILE, 'w+') as sad:
-        sad.write(waveform)
+    # Install the waveform in the SDRROOT of the running domain
+    domain_name = os.getenv('DOMAINNAME', 'REDHAWK_DEV')
+    omniorb_ip = os.getenv('OMNISERVICEIP', 'localhost')
+    try:
+        print 'Attaching to domain "{0}" on naming service "{1}"'.format(
+            domain_name, omniorb_ip)
+        dom = redhawk.attach(domain_name, omniorb_ip)
 
-    return INSTALL_FILE
+        if not dom.fileMgr.exists(INSTALL_DIR):
+            print 'Creating ' + INSTALL_DIR
+            dom.fileMgr.mkdir(INSTALL_DIR)
+        print 'Writing ' + INSTALL_FILE
+        waveform_sca = dom.fileMgr.create(INSTALL_FILE)
+        waveform_sca.write(waveform_xml)
+        print 'Finished.  Closing file.'
+        waveform_sca.close()
+    except:
+        pass
 
 if __name__ == '__main__':
     print main()
