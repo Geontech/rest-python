@@ -133,17 +133,11 @@ class BulkIOTests(JsonTests, AsyncHTTPTestCase, LogTrapTestCase):
     def test_sri_keywords_ws(self):
         # NOTE: A timeout means the website took too long to respond
         # it could mean that bulkio port is not sending data
-        cid = next(
-            (cp['id'] for cp in self.components if cp['name'] == Default.COMPONENT), None)
-        if not cid:
-            self.fail('Unable to find %s component' % (Default.COMPONENT))
+        conn = yield self._get_connection()
 
-        url = self.get_url("%s/components/%s/ports/%s/bulkio" % (Default.REST_BASE +
-            self.base_url, cid, Default.COMPONENT_USES_PORT)).replace('http', 'ws')
-        conn1 = yield websocket.websocket_connect(url, io_loop=self.io_loop)
-
-        # Check SRI behavior (changed = true, kewords)
-        # Configure the siggen's col_rf property
+        # Check SRI behavior (changed = true, keywords)
+        # Configure the siggen's col_rf property (it's the AC of the waveform,
+        # so this will work because its properties are external by default).
         change_fails = 0
         change_fails_limit = 100
         keyword_fails = 0
@@ -151,16 +145,14 @@ class BulkIOTests(JsonTests, AsyncHTTPTestCase, LogTrapTestCase):
         col_rf = 100
         col_rf_limit = 200
         d, r = yield self._async_json_request(
-            "%s/components/%s/properties" % (self.base_url, cid),
-            200,
-            'PUT',
+            "%s/properties" % self.base_url, 200, 'PUT',
             {'properties': [
                 {'id': Default.COMPONENT_COL_RF, 'value': col_rf}
             ]}
         )
 
         while True:
-            msg = yield conn1.read_message()
+            msg = yield conn.read_message()
             try:
                 packet = json.loads(msg)
                 self.assertIn('sriChanged', packet)
@@ -194,29 +186,14 @@ class BulkIOTests(JsonTests, AsyncHTTPTestCase, LogTrapTestCase):
                         ))
                 else:
                     logging.debug("Received updated SRI Keyword COL_RF: {0}".format(new_col_rf))
-                    if new_col_rf == col_rf_limit:
-                        # Time to quit successfully!
-                        break;
-                    else:
-                        logging.info('Changing COL_RF to change SRI')
-                        change_fails = 0
-                        keyword_fails = 0
-                        col_rf = col_rf_limit
-                        d, r = yield self._async_json_request(
-                            "%s/components/%s/properties" % (self.base_url, cid),
-                            200,
-                            'PUT',
-                            {'properties': [
-                                {'id': Default.COMPONENT_COL_RF, 'value': col_rf}
-                            ]}
-                        )
+                    break # quit successfully!
 
             except ValueError:
                 data = dict(data=msg)
 
         if packet.get('error', None):
             self.fail('Recieved websocket error %s' % packet)
-        conn1.close()
+        conn.close()
 
         # wait a little bit to force close to take place in ioloop
         # (if we return without waiting, ioloop closes before websocket closes)
