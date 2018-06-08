@@ -315,4 +315,3 @@ class BulkIOWebsocketHandler(CrossDomainSockets):
         except websocket.WebSocketClosedError:
             logging.debug('Received WebSocketClosedError. Ignoring')
             self.close()
-            x = yield gen.Task(self._ioloop.add_timeout, time.time() + .5)
