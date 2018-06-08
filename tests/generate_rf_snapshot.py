@@ -22,6 +22,7 @@
 import os
 import time
 from ossie.utils import sb
+from ossie.utils import redhawk
 from ossie.cf import CF
 
 from defaults import Default
@@ -55,7 +56,7 @@ def main():
         BW=Default.FEI_ALLOC_BW,
         TYPE=Default.FEI_ALLOC_TYPE,
         R=Default.FEI_ALLOC_R)
-    SNAPSHOT_DIR = '/var/rf_snapshots'
+    SNAPSHOT_DIR = '/tmp'
     SNAPSHOT_FILE = os.path.join(SNAPSHOT_DIR, FILE_NAME) 
 
     # Setup a siggen and filewriter 
@@ -75,7 +76,31 @@ def main():
     time.sleep(2)
     sb.stop()
 
-    return SNAPSHOT_FILE
+    # Attach to the domain and copy the file over.
+    domain_name = os.getenv('DOMAINNAME', 'REDHAWK_DEV')
+    omniorb_ip = os.getenv('OMNISERVICEIP', 'localhost')
+    try:
+        print 'Attaching to domain "{0}" on naming service "{1}"'.format(domain_name, omniorb_ip)
+        dom = redhawk.attach(domain_name, omniorb_ip)
+
+        sca_filename = os.path.join(Default.FEI_FILE_PATH, FILE_NAME)
+        print 'Creating ' + sca_filename
+        if not dom.fileMgr.exists(Default.FEI_FILE_PATH):
+            dom.fileMgr.mkdir(Default.FEI_FILE_PATH)
+        snap_sca = dom.fileMgr.create(sca_filename)
+
+        print 'Copying ' + SNAPSHOT_FILE + ' to SCA file system'
+        with open(SNAPSHOT_FILE) as snap_local:
+            snap_sca.write(snap_local.read())
+
+        print 'Finished.  Closing file.'
+        snap_sca.close()
+    except:
+        print 'Exception!'
+        pass
+
+    print 'Removing original file.'
+    os.remove(SNAPSHOT_FILE)
 
 if __name__ == '__main__':
     print main()
