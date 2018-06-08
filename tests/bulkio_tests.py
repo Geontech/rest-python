@@ -92,19 +92,13 @@ class BulkIOTests(JsonTests, AsyncHTTPTestCase, LogTrapTestCase):
 
     @tornado.testing.gen_test
     def test_bulkio_ws(self):
-
         # NOTE: A timeout means the website took too long to respond
         # it could mean that bulkio port is not sending data
-        cid = next((cp['id'] for cp in self.components if cp['name'] == Default.COMPONENT), None)
-        if not cid:
-            self.fail('Unable to find %s component' % (Default.COMPONENT))
-
-        url = self.get_url("%s/components/%s/ports/%s/bulkio"%(Default.REST_BASE+self.base_url,cid,Default.COMPONENT_USES_PORT)).replace('http','ws')
-        conn1 = yield websocket.websocket_connect(url, io_loop=self.io_loop) 
+        conn = yield self._get_connection()
 
         foundSRI = False
         for x in xrange(10):
-            msg = yield conn1.read_message()
+            msg = yield conn.read_message()
             try:
                 packet = json.loads(msg)
                 sri = packet.get('SRI', None)
@@ -126,7 +120,7 @@ class BulkIOTests(JsonTests, AsyncHTTPTestCase, LogTrapTestCase):
 
         if packet.get('error', None):
             self.fail('Recieved websocket error %s' % packet)
-        conn1.close()
+        conn.close()
 
         # wait a little bit to force close to take place in ioloop
         # (if we return without waiting, ioloop closes before websocket closes)
