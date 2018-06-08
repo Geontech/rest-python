@@ -77,6 +77,19 @@ class BulkIOTests(JsonTests, AsyncHTTPTestCase, LogTrapTestCase):
     def get_app(self):
         return Application(debug=True, _ioloop=self.io_loop)
 
+    @tornado.gen.coroutine
+    def _get_connection(self):
+        cid = next(
+            (cp['id'] for cp in self.components if cp['name'] == Default.COMPONENT), None)
+        if not cid:
+            self.fail('Unable to find %s component' % (Default.COMPONENT))
+
+        url = self.get_url("%s/components/%s/ports/%s/bulkio" % (Default.REST_BASE +
+                                                                 self.base_url, cid, Default.COMPONENT_USES_PORT)).replace('http', 'ws')
+        logging.debug('WS URL: ' + url)
+        conn = yield websocket.websocket_connect(url, io_loop=self.io_loop)
+        raise tornado.gen.Return(conn)
+
     @tornado.testing.gen_test
     def test_bulkio_ws(self):
 
