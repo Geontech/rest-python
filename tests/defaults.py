@@ -32,6 +32,7 @@ class Default(object):
     COMPONENT_PROPERTY = 'frequency'
     COMPONENT_PROPERTY_VALUE = 1000
     COMPONENT_PROPERTY_CHANGE = 2000
+    COMPONENT_COL_RF = 'col_rf'
     COMPONENT_USES_PORT = 'dataShort_out'
 
     RESOURCE_NOT_FOUND_ERR = 'ResourceNotFound'

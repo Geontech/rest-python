@@ -83,19 +83,15 @@ class ApplicationTests(JsonTests):
 
     @tornado.testing.gen_test
     def test_launch_release(self):
-        url, applications = yield self._get_applications()
-        json, resp = yield self._async_json_request(url+'/applications', 200)
-
-        self.assertTrue('waveforms' in json)
-        self.assertTrue(Default.WAVEFORM in [x['name'] for x in json['waveforms']])
-
         wf_id = yield self._launch(Default.WAVEFORM)
+        url, applications = yield self._get_applications()
+        self.assertTrue(any([Default.WAVEFORM in x['name'] for x in applications]))
         yield self._release(wf_id)
 
     @tornado.testing.gen_test
     def test_list(self):
-        url, applications = yield self._get_applications()
-        json, resp = yield self._async_json_request(url+'/applications', 200)
+        url = '/domains/' + Default.DOMAIN_NAME
+        json, resp = yield self._async_json_request(url, 200)
 
         self.assertTrue('waveforms' in json)
         self.assertTrue(isinstance(json['waveforms'], list))
@@ -104,7 +100,6 @@ class ApplicationTests(JsonTests):
             self.assertTrue('name' in app)
 
         self.assertIdList(json, 'applications')
-        self.assertEquals(applications, json['applications'])
 
     @tornado.testing.gen_test
     def test_info(self):
