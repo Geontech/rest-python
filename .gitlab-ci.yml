@@ -40,12 +40,9 @@ test:
     # Install docker-compose
     - apk add --no-cache py2-pip && pip install docker-compose
 
-    # Change to 'tests', export the test image name, patch the network names
-    # so they're unique in the event of concurrent runs, compose up under a
-    # unique project name and begin executing tests.
+    # Pull the test image and start the stack without rebuilding it.
     - cd tests
-    - export TEST_IMAGE=${CONTAINER_TEST_IMAGE}
-    - sed -i -E "s/TEST_NETWORK/"${CI_COMMIT_REF_SLUG}"/g" docker-compose.yml
+    - docker pull ${CONTAINER_TEST_IMAGE}
     - docker-compose -p ${CI_COMMIT_REF_SLUG} up -d --no-build
     - docker-compose -p ${CI_COMMIT_REF_SLUG} exec -T rest
       bash -l -c 'yum install -y rh.SigGen rh.FileWriter'
@@ -54,7 +51,7 @@ test:
 
     # Clean up and exit with the result
     - docker-compose -p ${CI_COMMIT_REF_SLUG} down
-    - docker rmi $CONTAINER_TEST_IMAGE}
+    - docker rmi ${CONTAINER_TEST_IMAGE}
     - exit ${RESULT}
 
 # Move the test image to internal 'latest' and clean up the worker's images
@@ -92,8 +89,8 @@ deploy-image:
     - docker pull $CONTAINER_RELEASE_IMAGE
     - docker logout
     - docker login -u ${DOCKERHUB_USER} -p ${DOCKERHUB_TOKEN}
-    - docker tag $CONTAINER_RELEASE_IMAGE $dockerhub_image_tag
-    - docker tag $CONTAINER_RELEASE_IMAGE $dockerhub_image_latest
+    - docker tag $CONTAINER_RELEASE_IMAGE ${dockerhub_image_tag}
+    - docker tag $CONTAINER_RELEASE_IMAGE ${dockerhub_image_latest}
     - docker push ${dockerhub_image_tag} ${dockerhub_image_latest}
     - docker rmi ${CONTAINER_RELEASE_IMAGE} ${dockerhub_image_tag} ${dockerhub_image_latest}
 

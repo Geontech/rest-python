@@ -5,7 +5,7 @@ services:
     image: geontech/redhawk-omniserver:${REDHAWK_VERSION:-2.0.8}
     hostname: omniorb
     networks:
-      - redhawk-TEST_NETWORK
+      - redhawk
 
   # Standard REDHAWK SDR Domain
   domain:
@@ -17,7 +17,7 @@ services:
       - OMNISERVICEIP=omniorb
       - OMNISERVICEPORTS=19000:19050
     networks:
-      - redhawk-TEST_NETWORK
+      - redhawk
 
   # Standard GPP 
   gpp:
@@ -31,7 +31,7 @@ services:
       - OMNISERVICEIP=omniorb
       - OMNISERVICEPORTS=19100:19150
     networks:
-      - redhawk-TEST_NETWORK
+      - redhawk
 
   # FEI FileReader Device runner mounted to the snapshot.
   fei_file_reader:
@@ -44,11 +44,11 @@ services:
       - OMNISERVICEIP=omniorb
       - OMNISERVICEPORTS=19200:19250
     networks:
-      - redhawk-TEST_NETWORK
+      - redhawk
 
   # REST-Python Unit Under Test (UUT)
   rest:
-    image: ${TEST_IMAGE:-geontech/redhawk-webserver}
+    image: ${CONTAINER_TEST_IMAGE:-geontech/redhawk-webserver}
     build: ../
     depends_on:
       - domain
@@ -58,9 +58,9 @@ services:
       - OMNISERVICEIP=omniorb
     command: [sleep, '3600']
     networks:
-      - redhawk-TEST_NETWORK
-      - web-TEST_NETWORK
+      - redhawk
+      - web
 
 networks:
-  redhawk-TEST_NETWORK:
-  web-TEST_NETWORK:
+  redhawk:
+  web:
