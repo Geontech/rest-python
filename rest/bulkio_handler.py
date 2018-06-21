@@ -48,7 +48,8 @@ ControlEnum = enum(xMax=0, xBegin=1, xEnd=2, xZoomIn=3, xZoomReset=4, yMax=5, yB
 
 
 class BulkIOWebsocketHandler(CrossDomainSockets):
-    def initialize(self, kind, redhawk=None, _ioloop=None):
+    def initialize(self, close_future, kind, redhawk=None, _ioloop=None):
+        self.close_future = close_future
         self.kind = kind
         self.redhawk = redhawk
         if not _ioloop:
@@ -240,6 +241,7 @@ class BulkIOWebsocketHandler(CrossDomainSockets):
 
     def on_close(self):
         logging.debug('Stream CLOSE')
+        self.close_future.set_result((self.close_code, self.close_reason))
         try:
             self.port.ref.disconnectPort(self._connectionId)
             logging.info("Closed websocket to %s, %s", self.port, self._connectionId)
