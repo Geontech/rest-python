@@ -26,8 +26,7 @@ from ossie.properties import props_to_dict
 from omniORB import CORBA
 
 # third party imports
-from tornado import ioloop, gen
-from tornado import websocket
+from tornado import ioloop, gen, websocket
 
 import time
 import json
