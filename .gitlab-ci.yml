@@ -70,7 +70,9 @@ release:
 cleanup-ci:
   stage: cleanup
   when: always
-  image: alpine:latest
+  except:
+    - master
+  <<: *container_registry
   script:
     - apk add --no-cache git bash curl
     - git clone ${DOCKER_UTILS} docker-util
