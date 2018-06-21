@@ -28,15 +28,10 @@ pyvenv="${SCRIPTPATH}/pyvenv"
 source /etc/profile.d/redhawk.sh
 
 # Create a simple waveform for testing
-SIGTEST="$(python tests/generate_sigtest_sad.py)"
-RF_SNAPSHOT="$(python tests/generate_rf_snapshot.py)"
-RF_SNAPSHOT="${RF_SNAPSHOT##*$'\n'}"
+python tests/generate_sigtest_sad.py
+python tests/generate_rf_snapshot.py
 
 # Clear virtual env
 ./setup.sh install
 
 exec ${pyvenv} python ${SCRIPTPATH}/test.py $@
-
-# Clean up
-echo "Cleaning up ${SIGTEST} and ${RF_SNAPSHOT}"
-rm ${SIGTEST} ${RF_SNAPSHOT}

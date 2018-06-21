@@ -37,7 +37,7 @@ from rest.event_handler import EventHandler, EventChannelHandler
 import tornado.httpserver
 import tornado.web
 import tornado.websocket
-from tornado import ioloop, gen
+from tornado import ioloop, gen, concurrent
 
 from model.redhawk import Redhawk
 
@@ -74,6 +74,7 @@ class Application(tornado.web.Application):
     def __init__(self, *args, **kwargs):
         # explicit _ioloop for unit testing
         _ioloop = kwargs.get('_ioloop', None)
+        _ws_close_future = kwargs.get('close_future', concurrent.Future())
         cwd = os.path.abspath(os.path.dirname(__import__(__name__).__file__))
 
         # REDHAWK Service
@@ -118,7 +119,7 @@ class Application(tornado.web.Application):
             (_APPLICATION_PATH + _ID + _PORT_PATH + _ID, PortHandler, 
                 dict(redhawk=redhawk, kind='application')),
             (_APPLICATION_PATH + _ID + _BULKIO_PATH, BulkIOWebsocketHandler, 
-                dict(redhawk=redhawk, kind='application', _ioloop=_ioloop)),
+                dict(redhawk=redhawk, kind='application', _ioloop=_ioloop, close_future=_ws_close_future)),
             (_APPLICATION_PATH + _ID + _PROPERTIES_PATH + _LIST, ApplicationProperties,
                 dict(redhawk=redhawk)),
             (_APPLICATION_PATH + _ID + _PROPERTIES_PATH + _ID, ApplicationProperties,
@@ -136,7 +137,7 @@ class Application(tornado.web.Application):
             (_COMPONENT_PATH + _ID + _PORT_PATH + _ID, PortHandler,
                 dict(redhawk=redhawk, kind='component')),
             (_COMPONENT_PATH + _ID + _BULKIO_PATH, BulkIOWebsocketHandler,
-                dict(redhawk=redhawk, kind='component', _ioloop=_ioloop)),
+                dict(redhawk=redhawk, kind='component', _ioloop=_ioloop, close_future=_ws_close_future)),
 
             # Device Managers
             (_DEVICE_MGR_PATH + _LIST, DeviceManagers, dict(redhawk=redhawk)),
@@ -160,7 +161,8 @@ class Application(tornado.web.Application):
             (_DEVICE_PATH + _ID + _PORT_PATH + _FEI_NAVDATA_ID + _LIST, FEINavDataHandler, dict(redhawk=redhawk)),
             (_DEVICE_PATH + _ID + _PORT_PATH + _FEI_NAVDATA_ID + _ID, FEINavDataHandler, dict(redhawk=redhawk)),  
             (_DEVICE_PATH + _ID + _PORT_PATH + _ID, PortHandler, dict(redhawk=redhawk, kind='device')), # Default port handler
-            (_DEVICE_PATH + _ID + _BULKIO_PATH, BulkIOWebsocketHandler, dict(redhawk=redhawk, kind='device', _ioloop=_ioloop)),
+            (_DEVICE_PATH + _ID + _BULKIO_PATH, BulkIOWebsocketHandler,
+                dict(redhawk=redhawk, kind='device', _ioloop=_ioloop, close_future=_ws_close_future)),
 
             # Filesystem
             (_FS_PATH, FileSystem, dict(redhawk=redhawk))

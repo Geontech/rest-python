@@ -45,4 +45,5 @@ class Default(object):
     FEI_ALLOC_BW    = None
     FEI_ALLOC_TYPE  = 'I'
     FEI_ALLOC_R     = True
+    FEI_FILE_PATH   = '/rf_snapshots'
 
