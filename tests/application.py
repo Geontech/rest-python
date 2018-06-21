@@ -21,7 +21,6 @@
 Tornado tests for the /domain/{NAME}/applications portion of the REST API
 """
 
-import pprint
 import tornado
 
 from base import JsonTests
@@ -83,6 +82,10 @@ class ApplicationTests(JsonTests):
 
     @tornado.testing.gen_test
     def test_launch_release(self):
+        '''
+        This test checks that a launched waveform does in-fact exist in the
+        applications endpoint as well as is removed once released.
+        '''
         wf_id = yield self._launch(Default.WAVEFORM)
         url, applications = yield self._get_applications()
         self.assertTrue(any([Default.WAVEFORM in x['name'] for x in applications]))
@@ -115,38 +118,6 @@ class ApplicationTests(JsonTests):
 
         self.assertList(json, 'properties')
         self.assertProperties(json['properties'])
-        
-    @tornado.testing.gen_test
-    def test_detect_new_applications(self):
-        # yield [ self.detect_new_applications() for x in xrange(10) ]
-        yield self.detect_new_applications()
-        
-    @tornado.gen.coroutine
-    def detect_new_applications(self):
-        'Test when an application started'
-        url, apps = yield self._get_applications()        
-        
-        # start a new app
-        id = yield self.redhawk.launch_application(Default.DOMAIN_NAME, Default.WAVEFORM)
-        self._async_sleep(1)
-
-        # ensure it exists in the application
-        url, apps2 = yield self._get_applications()
-        if id not in (a['id'] for a in apps2):
-            self.fail("Expecting %s in domain %s" % (id, Default.DOMAIN_NAME))
-        if (len(apps)+1 != len(apps2)):
-            self.fail("Expecting one additional app %s %s" % (apps, apps2))
-            
-        # now release it
-        yield self.redhawk.release_application(Default.DOMAIN_NAME, id)
-        self._async_sleep(1)
-
-        # ensure it is missing in the application list
-        url, apps3 = yield self._get_applications()
-        if id in (a['id'] for a in apps3):
-            self.fail("Not Expecting %s in domain %s" % (id, Default.DOMAIN_NAME))
-        if (len(apps) != len(apps3)):
-            self.fail("Expecting same number of apps %s %s" % (apps, apps3))
         
         
     @tornado.testing.gen_test
