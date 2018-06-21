@@ -29,10 +29,9 @@ from functools import partial
 
 # tornado imports
 import tornado
-import tornado.testing
 from tornado.testing import AsyncHTTPTestCase, LogTrapTestCase
 from tornado.httpclient import AsyncHTTPClient, HTTPRequest
-from tornado import websocket, gen
+from tornado import websocket, gen, concurrent
 
 # application imports
 from pyrest import Application
@@ -65,19 +64,13 @@ class BulkIOTests(JsonTests, AsyncHTTPTestCase, LogTrapTestCase):
         self.components = json_msg['components']
 
     def tearDown(self):
-        self._json_request(
-            self.base_url,
-            200,
-            'DELETE'
-        )
+        self._json_request(self.base_url, 200, 'DELETE')
         super(BulkIOTests, self).tearDown()
 
-
-
     def get_app(self):
-        return Application(debug=True, _ioloop=self.io_loop)
+        self.close_future = concurrent.Future()
+        return Application(debug=True, _ioloop=self.io_loop, close_future=self.close_future)
 
-    @tornado.gen.coroutine
     def _get_connection(self):
         cid = next(
             (cp['id'] for cp in self.components if cp['name'] == Default.COMPONENT), None)
@@ -85,54 +78,43 @@ class BulkIOTests(JsonTests, AsyncHTTPTestCase, LogTrapTestCase):
             self.fail('Unable to find %s component' % (Default.COMPONENT))
 
         url = self.get_url("%s/components/%s/ports/%s/bulkio" % (Default.REST_BASE +
-                                                                 self.base_url, cid, Default.COMPONENT_USES_PORT)).replace('http', 'ws')
+            self.base_url, cid, Default.COMPONENT_USES_PORT)).replace('http', 'ws')
         logging.debug('WS URL: ' + url)
-        conn = yield websocket.websocket_connect(url, io_loop=self.io_loop)
-        raise tornado.gen.Return(conn)
+        return websocket.websocket_connect(url, io_loop=self.io_loop)
 
     @tornado.testing.gen_test
     def test_bulkio_ws(self):
-        # NOTE: A timeout means the website took too long to respond
-        # it could mean that bulkio port is not sending data
         conn = yield self._get_connection()
 
-        foundSRI = False
-        for x in xrange(10):
-            msg = yield conn.read_message()
-            try:
+        try:
+            for _ in xrange(10):
+                msg = yield conn.read_message()
                 packet = json.loads(msg)
+                self.assertIsNone(packet.get('error', None),
+                    'Recieved websocket error %s' % packet)
+
                 sri = packet.get('SRI', None)
-                logging.debug("Got SRI %s", sri)
-                foundSRI = True
+                self.assertIsNotNone(sri, 'SRI is missing')
+
                 props = set(('hversion', 'xstart', 'xdelta', 'xunits',
                             'subsize', 'ystart', 'ydelta', 'yunits', 'mode',
                             'streamID', 'blocking', 'keywords'))
                 missing = props.difference(sri.keys())
-                if missing:
-                    self.fail("Missing SRI properties %s" % missing)
+                self.assertIsNone(
+                    missing, "Missing SRI members: %s" % missing)
 
                 buf = packet.get('dataBuffer', [])
-                if not buf:
-                    self.fail("Data buffer was empty.")
-
-            except ValueError:
-                data = dict(data=msg)
-
-        if packet.get('error', None):
-            self.fail('Recieved websocket error %s' % packet)
-        conn.close()
+                self.assertGreater(len(buf), 0, "Data buffer was empty.")
+        except:
+            pass
 
         # wait a little bit to force close to take place in ioloop
         # (if we return without waiting, ioloop closes before websocket closes)
-        x = yield gen.Task(self.io_loop.add_timeout, time.time() + .5)
-
-        if not foundSRI:
-            self.fail('Did not receive SRI')
+        conn.close()
+        yield self.close_future
 
     @tornado.testing.gen_test
     def test_sri_keywords_ws(self):
-        # NOTE: A timeout means the website took too long to respond
-        # it could mean that bulkio port is not sending data
         conn = yield self._get_connection()
 
         # Check SRI behavior (changed = true, keywords)
@@ -143,16 +125,16 @@ class BulkIOTests(JsonTests, AsyncHTTPTestCase, LogTrapTestCase):
         keyword_fails = 0
         keyword_fails_limit = 100
         col_rf = 100
-        d, r = yield self._async_json_request(
+        _, _ = yield self._async_json_request(
             "%s/properties" % self.base_url, 200, 'PUT',
             {'properties': [
                 {'id': Default.COMPONENT_COL_RF, 'value': col_rf}
             ]}
         )
 
-        while True:
-            msg = yield conn.read_message()
-            try:
+        try:
+            while True:
+                msg = yield conn.read_message()
                 packet = json.loads(msg)
                 self.assertIn('sriChanged', packet)
                 sriChanged = packet.get('sriChanged', False)
@@ -161,8 +143,11 @@ class BulkIOTests(JsonTests, AsyncHTTPTestCase, LogTrapTestCase):
                     if change_fails <= change_fails_limit:
                         continue;
                     else:
-                        self.fail("SRI did not change within {0} pushes".format(
-                            change_fails_limit))
+                        self.assertTrue(
+                            False,
+                            "SRI did not change within {0} pushes".format(
+                                change_fails_limit
+                                ))
                         break
                 logging.debug('SRI Changed detected')
 
@@ -179,24 +164,24 @@ class BulkIOTests(JsonTests, AsyncHTTPTestCase, LogTrapTestCase):
 
                 if col_rf != new_col_rf:
                     keyword_fails += 1
+
                     if keyword_fails > keyword_fails_limit:
-                        self.fail("SRI Keyword did not update ({0} vs. {1})".format(
-                            col_rf, new_col_rf
-                        ))
+                        self.assertTrue(
+                            False,
+                            "SRI Keyword did not update ({0} vs. {1})".format(
+                                col_rf, new_col_rf
+                            ))
+                        break;
                 else:
                     logging.debug("Received updated SRI Keyword COL_RF: {0}".format(new_col_rf))
-                    break # quit successfully!
-
-            except ValueError:
-                data = dict(data=msg)
-
-        if packet.get('error', None):
-            self.fail('Recieved websocket error %s' % packet)
-        conn.close()
+                    break  # quit successfully!
+        except:
+            pass
 
         # wait a little bit to force close to take place in ioloop
         # (if we return without waiting, ioloop closes before websocket closes)
-        x = yield gen.Task(self.io_loop.add_timeout, time.time() + .5)
+        conn.close()
+        yield self.close_future
 
 
 if __name__ == '__main__':
