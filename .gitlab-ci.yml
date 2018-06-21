@@ -1,7 +1,7 @@
 # This CI script builds Docker-REDHAWK's webserver image and deploys it to
 # dockerhub upon successful execution of its tests.
 variables:
-  CONTAINER_TEST_IMAGE:    $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG
+  CONTAINER_TEST_IMAGE:    $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
   CONTAINER_RELEASE_IMAGE: $CI_REGISTRY_IMAGE:latest
   DOCKERHUB_IMAGE:         geontech/redhawk-webserver
 
@@ -31,7 +31,9 @@ build:
   <<: *container_registry
   script:
     - sed -i -E "s/(geontech.+\:)(.+)/\1"$REDHAWK_VERSION"/g" Dockerfile
-    - docker build --pull --rm -t $CONTAINER_TEST_IMAGE .
+    - docker build
+      --pull
+      --tag $CONTAINER_TEST_IMAGE .
     - docker push $CONTAINER_TEST_IMAGE
     - docker rmi $CONTAINER_TEST_IMAGE
 
@@ -39,7 +41,7 @@ test:
   stage: test
   <<: *container_registry
   except:
-    - master
+    - tags
   script:
     # Install docker-compose
     - apk add --no-cache py2-pip && pip install docker-compose
@@ -47,14 +49,14 @@ test:
     # Pull the test image and start the stack without rebuilding it.
     - cd tests
     - docker pull ${CONTAINER_TEST_IMAGE}
-    - docker-compose -p ${CI_COMMIT_REF_SLUG} up -d --no-build
-    - docker-compose -p ${CI_COMMIT_REF_SLUG} exec -T rest
+    - docker-compose -p ${CI_COMMIT_SHA} up -d --no-build
+    - docker-compose -p ${CI_COMMIT_SHA} exec -T rest
       bash -l -c 'yum install -y rh.SigGen rh.FileWriter'
-    - docker-compose -p ${CI_COMMIT_REF_SLUG} exec -T rest
+    - docker-compose -p ${CI_COMMIT_SHA} exec -T rest
       bash -l -c './test.sh' || RESULT=$?
 
     # Clean up and exit with the result
-    - docker-compose -p ${CI_COMMIT_REF_SLUG} down
+    - docker-compose -p ${CI_COMMIT_SHA} down
     - docker rmi ${CONTAINER_TEST_IMAGE}
     - exit ${RESULT}
 
@@ -90,15 +92,19 @@ deploy-image:
   stage: deploy
   only:
     - tags
-    - master
   <<: *container_registry
   variables:
     dockerhub_image_tag:    geontech/redhawk-webserver:$CI_COMMIT_TAG
     dockerhub_image_latest: geontech/redhawk-webserver:latest
   script:
+    # Use JQ to patch in our dockerhub credentials for the public push
+    - apk add --no-cache jq
+    - >
+      jq --arg token "$DOCKERHUB_TOKEN" 
+        '.auths["https://index.docker.io/v1"] = { auth: $token }'
+        ~/.docker/config.json > ~/.docker/config.json
+    # Pull the release image, re-tag it to the dockerhub name and push it.
     - docker pull $CONTAINER_RELEASE_IMAGE
-    - docker logout
-    - docker login -u ${DOCKERHUB_USER} -p ${DOCKERHUB_TOKEN}
     - docker tag $CONTAINER_RELEASE_IMAGE ${dockerhub_image_tag}
     - docker tag $CONTAINER_RELEASE_IMAGE ${dockerhub_image_latest}
     - docker push ${dockerhub_image_tag} ${dockerhub_image_latest}
@@ -109,9 +115,9 @@ deploy-github:
   stage: deploy
   only:
     - tags
-    - master
-  image: alpine/git
+  image: alpine:latest
   script:
+    - apk add --no-cache openssh-client git
     - eval $(ssh-agent -s)
     - echo "${GITHUB_TOKEN}" | ssh-add - 
     - mkdir -p ~/.ssh
