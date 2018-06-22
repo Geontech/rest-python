@@ -50,7 +50,9 @@ test:
     # Pull the test image and start the stack without rebuilding it.
     - cd tests
     - docker pull ${CONTAINER_TEST_IMAGE}
+    - export CONTAINER_TEST_IMAGE=$CONTAINER_TEST_IMAGE
     - docker-compose -p ${CI_COMMIT_SHA} up -d --no-build
+    - docker-compose -p ${CI_COMMIT_SHA} images
     - docker-compose -p ${CI_COMMIT_SHA} exec -T rest
       bash -l -c 'yum install -y rh.SigGen rh.FileWriter'
     - docker-compose -p ${CI_COMMIT_SHA} exec -T rest
@@ -92,7 +94,8 @@ deploy-image:
     - docker pull $CONTAINER_RELEASE_IMAGE
     - docker tag $CONTAINER_RELEASE_IMAGE ${dockerhub_image_tag}
     - docker tag $CONTAINER_RELEASE_IMAGE ${dockerhub_image_latest}
-    - docker push ${dockerhub_image_tag} ${dockerhub_image_latest}
+    - docker push ${dockerhub_image_tag}
+    - docker push ${dockerhub_image_latest}
     - docker rmi ${CONTAINER_RELEASE_IMAGE} ${dockerhub_image_tag} ${dockerhub_image_latest}
 
 # Push to GitHub
@@ -100,11 +103,11 @@ deploy-github:
   stage: deploy
   only:
     - tags
-  image: alpine:latest
+  image: alpine
   script:
     - apk add --no-cache openssh-client git
     - eval $(ssh-agent -s)
-    - echo ${GITHUB_TOKEN} | tr -d '\r' | ssh-add - > /dev/null
+    - echo "$GITHUB_TOKEN" | ssh-add -
     - mkdir -p ~/.ssh
     - echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
     # Configure git and push w/ tag(s)
@@ -113,16 +116,29 @@ deploy-github:
     - git remote set-url origin ${GITHUB_REPO}
     - git push origin ${GITHUB_BRANCH} --follow-tags
 
-# Clean up the test image from the internal registry.
-cleanup-ci:
+# Template for cleaning the image registry
+.clean-image: &clean-image
   stage: cleanup
-  when: always
-  except:
-    - master
-    - tags
   <<: *container_registry
   script:
     - apk add --no-cache git bash curl
     - git clone ${DOCKER_UTILS} docker-util
-    - docker-util/delete-image.sh $CONTAINER_TEST_IMAGE
-  
+    - docker-util/delete-image.sh $clean_target_image
+
+# Clean dev/test images not on master branch
+clean-dev:
+  when: always
+  variables:
+    clean_target_image: $CONTAINER_TEST_IMAGE
+  except:
+    - master
+    - tags
+  <<: *clean-image
+
+# Cleanup the locally stored image after tagging and pushing to public
+clean-internal:
+  variables:
+    clean_target_image: $CONTAINER_RELEASE_IMAGE
+  only:
+    - tags
+  <<: *clean-image
